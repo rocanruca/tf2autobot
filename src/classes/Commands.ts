@@ -1,7 +1,6 @@
 import SteamID from 'steamid';
 import SKU from 'tf2-sku';
 import pluralize from 'pluralize';
-import moment from 'moment-timezone';
 import Currencies from 'tf2-currencies';
 import validUrl from 'valid-url';
 import TradeOfferManager from 'steam-tradeoffer-manager';
@@ -14,6 +13,7 @@ import AdminCart from './AdminCart';
 import UserCart from './UserCart';
 import MyHandler from './MyHandler';
 import CartQueue from './CartQueue';
+import moment from 'moment-timezone';
 import DiscordWebhook from './DiscordWebhook';
 
 import { Item, Currency } from '../types/TeamFortress2';
@@ -25,48 +25,49 @@ import log from '../lib/logger';
 import SchemaManager from 'tf2-schema';
 
 const COMMANDS: string[] = [
-    '!help - Get list of commands',
-    '!how2trade - Guide on how to use and trade with the bot',
+    '!help - Get list of commands 📜',
+    '!how2trade - Guide on how to use and trade with the bot 📋',
     '!time - Show owner current time 🕥',
-    '!price [amount] <name> - Get the price and stock of an item',
-    '!stock - Get a list of items that the bot has',
+    '!stock - Get a list of items that the bot has 📊',
     '!pure - Get current pure stock 💰',
     '!rate - Get current key prices 🔑',
-    '!message <your message> - Send a message to the owner of the bot 💬',
-    '!buy [amount] <name> - Instantly buy an item 💲',
-    '!sell [amount] <name> - Instantly sell an item 💲',
-    '!buycart [amount] <name> - Adds an item you want to buy to the cart 🛒',
-    '!sellcart [amount] <name> - Adds an item you want to sell to the cart 🛒',
+    '!price [amount] <name> - Get the price and stock of an item 💱',
+    '!message <Your Messages> - Send a message to the owner of the bot 💬',
+    '!buy [amount] <name> - Instantly buy an item 📥',
+    '!sell [amount] <name> - Instantly sell an item 📤',
+    '!buycart [amount] <name> - Adds an item you want to buy to the cart ➡🛒',
+    '!sellcart [amount] <name> - Adds an item you want to sell to the cart ⬅🛒',
     '!cart - See current cart 🛒',
-    '!clearcart - Clears the current cart ❎🛒',
-    '!checkout - Make the bot send an offer the items in the cart ✅🛒',
-    '!queue - See your position in the queue',
+    '!clearcart - Clears the current cart 🛒❎',
+    '!checkout - Make the bot send an offer the items in the cart 🛒✅',
+    '!queue - See your position in the queue 🚶🏻‍♂️🚶🏻‍♂️',
     '!cancel - Cancel an already made offer, or cancel offer being made ❌'
 ];
 
 const ADMIN_COMMANDS: string[] = [
-    '!deposit <name=>&<amount=> - Used to deposit items',
-    '!withdraw <name=>&<amount=> - Used to withdraw items',
-    '!add - Add a pricelist entry ➕',
-    '!update - Update a pricelist entry',
-    '!remove <sku=> OR <item=> - Remove a pricelist entry ➖',
-    '!get <sku=> OR <item=> - Get raw information about a pricelist entry',
-    '!pricecheck <sku=> OR <item=> - Requests an item to be priced by PricesTF',
-    '!check sku=<item sku> - Request current price for an item from Prices.TF',
-    '!expand <craftable=true|false> - Uses Backpack Expanders to increase the inventory limit',
+    '!add <param> - Add a pricelist entry 📝',
+    '!update <param> - Update a pricelist entry 🔆',
+    '!remove <param> - Remove a pricelist entry ✂',
+    '!get <param> - Get raw information about a pricelist entry 📜',
+    '!expand <param> - Uses Backpack Expanders 🎒',
+    '!deposit <param> - Used to deposit items 📥',
+    '!withdraw <param> - Used to withdraw items 📤',
     '!delete sku=<item sku> - Delete any item (use only sku) 🚮',
-    '!stop - Stop the bot 🔴',
-    '!restart - Restart the bot 🔄',
-    '!version - Get version that the bot is running',
+    '!pricecheck <param> - Requests an item to be priced by PricesTF ♻',
+    '!check sku=<item sku> - Request current price for an item from Prices.TF',
+    '!avatar <imageURL> - Change avatar 🛃',
+    '!name <newName> - Change name 🆕',
     '!autokeys - Get info on your current autoBuy/Sell Keys settings 🔑',
-    '!avatar <image_URL> - Change avatar',
-    '!name <new_name> - Change name',
-    '!stats - Get statistics for accepted trades 📊',
-    '!trades - Get a list of offers pending for manual review 🔍',
-    '!trade <offerID> - Get info about a trade',
-    '!accept <offerID> [Your Message] - Manually accept an active offer ✅🔍',
-    '!decline <offerID> [Your Message] - Manually decline an active offer ❌🔍',
-    '!message <steamid> <your message> - Send a message to a user 💬'
+    '!craftweapon - get a list of craft weapon stock 🔫',
+    '!trades - Get a list of offers pending for manual review 🧾💱',
+    '!trade <offerID> - Get info about a trade 🧐💱',
+    '!accepttrade <offerID> [Your Message] - Manually accept an active offer ✅💱',
+    '!declinetrade <offerID> [Your Message] - Manually decline an active offer ❌💱',
+    '!message <steamid> <your message> - Send a message to a user 💬',
+    '!stop - Stop the bot 🛑',
+    '!restart - Restart the bot 🔁',
+    '!version - Get version that the bot is running 🌐',
+    '!stats - Get statistics for accepted trades 🔢'
 ];
 
 export = class Commands {
@@ -102,10 +103,12 @@ export = class Commands {
             this.timeCommand(steamID);
         } else if (command === 'autokeys' && isAdmin) {
             this.autoKeysCommand(steamID);
-        } else if (command === 'rate') {
-            this.rateCommand(steamID);
+        } else if (command === 'craftweapon' && isAdmin) {
+            this.craftweaponCommand(steamID);
         } else if (command === 'message') {
             this.messageCommand(steamID, message);
+        } else if (command === 'rate') {
+            this.rateCommand(steamID);
         } else if (command === 'cart') {
             this.cartCommand(steamID);
         } else if (command === 'clearcart') {
@@ -136,12 +139,12 @@ export = class Commands {
             this.removeCommand(steamID, message);
         } else if (command === 'update' && isAdmin) {
             this.updateCommand(steamID, message);
+        } else if (command === 'delete' && isAdmin) {
+            this.deleteCommand(steamID, message);
         } else if (command === 'pricecheck' && isAdmin) {
             this.pricecheckCommand(steamID, message);
         } else if (command === 'check' && isAdmin) {
             this.checkCommand(steamID, message);
-        } else if (command === 'delete' && isAdmin) {
-            this.deleteCommand(steamID, message);
         } else if (command === 'expand' && isAdmin) {
             this.expandCommand(steamID, message);
         } else if (command === 'stop' && isAdmin) {
@@ -205,13 +208,13 @@ export = class Commands {
                 steamID,
                 process.env.CUSTOM_I_DONT_KNOW_WHAT_YOU_MEAN
                     ? process.env.CUSTOM_I_DONT_KNOW_WHAT_YOU_MEAN
-                    : '❌ I don\'t know what you mean, please type "!help" for all my commands!'
+                    : '❌I don\'t know what you mean, please type "!help" for all my commands!'
             );
         }
     }
 
     private helpCommand(steamID: SteamID): void {
-        let reply = `📜 Here's a list of all my commands:\n- ${COMMANDS.join('\n- ')}`;
+        let reply = `👨🏻‍💻 Here's a list of all my commands:\n- ${COMMANDS.join('\n- ')}`;
 
         if (this.bot.isAdmin(steamID)) {
             reply += `\n\nAdmin commands:\n- ${ADMIN_COMMANDS.join('\n- ')}`;
@@ -225,7 +228,7 @@ export = class Commands {
             steamID,
             process.env.CUSTOM_HOW2TRADE_MESSAGE
                 ? process.env.CUSTOM_HOW2TRADE_MESSAGE
-                : '/quote You can either send me an offer yourself, or use one of my commands to request a trade. Say you want to buy a Team Captain, just type "!buy Team Captain". Type "!help" for all the commands.' +
+                : '/quote ✅You can either send me an offer yourself, or use one of my commands to request a trade. Say you want to buy a Team Captain, just type "!buy Team Captain". Type "!help" for all the commands.' +
                       '\nYou can also buy or sell multiple items by using "!buycart" or "!sellcart" commands.'
         );
     }
@@ -304,11 +307,11 @@ export = class Commands {
             reply += ` and I can sell ${this.bot.inventoryManager.amountCanTrade(match.sku, false)}`;
         }
 
-        reply += '. ';
-
         if (match.autoprice && isAdmin) {
             reply += ` (price last updated ${moment.unix(match.time).fromNow()})`;
         }
+
+        reply += '.';
 
         this.bot.sendMessage(steamID, reply);
     }
@@ -382,6 +385,14 @@ export = class Commands {
         if (left > 0) {
             reply += `,\nand ${left} other ${pluralize('item', left)}`;
         }
+
+        this.bot.sendMessage(steamID, reply);
+    }
+
+    private craftweaponCommand(steamID: SteamID): void {
+        const crafWeaponStock = this.craftWeapons();
+
+        const reply = "📃 Here's a list of all craft weapons stock in my inventory:\n\n" + crafWeaponStock.join(', \n');
 
         this.bot.sendMessage(steamID, reply);
     }
@@ -566,10 +577,10 @@ export = class Commands {
             if (isAdmin) {
                 this.bot.sendMessage(
                     steamID,
-                    '❌ The message command is disabled. Enable it in the config with `DISABLE_MESSAGES=false`.'
+                    '⚠️ The message command is disabled. Enable it in the config with `DISABLE_MESSAGES=false`.'
                 );
             } else {
-                this.bot.sendMessage(steamID, '❌ The owner has disabled messages.');
+                this.bot.sendMessage(steamID, '⚠️ The owner has disabled messages.');
             }
             return;
         }
@@ -580,7 +591,7 @@ export = class Commands {
             if (parts.length < 3) {
                 this.bot.sendMessage(
                     steamID,
-                    '❌ Your syntax is wrong. Here\'s an example: "!message 76561198120070906 Hi"'
+                    '⚠️ Your syntax is wrong. Here\'s an example: "!message 76561198120070906 Hi"'
                 );
                 return;
             }
@@ -597,8 +608,6 @@ export = class Commands {
                 return;
             }
 
-            const recipentDetails = this.bot.friends.getFriend(recipientSteamID);
-
             const reply = message.substr(message.toLowerCase().indexOf(recipient) + 18);
 
             // Send message to recipient
@@ -610,26 +619,22 @@ export = class Commands {
             // Send confirmation message to admin
             this.bot.sendMessage(steamID, '✅ Your message has been sent.');
 
-            // Send message to all other admins that an admin replied
-            this.bot.messageAdmins(
-                (adminDetails ? adminDetails.player_name + ` (${steamID})` : steamID) +
-                    ' sent a message to ' +
-                    (recipentDetails ? recipentDetails.player_name + ` (${recipientSteamID})` : recipientSteamID) +
-                    ` with "${reply}".`,
-                [steamID]
-            );
+            // Send message to all other wadmins that an admin replied
+            this.bot.messageAdmins(`Other admins - ${steamID} sent a message to ${recipientSteamID} with "${reply}".`, [
+                steamID
+            ]);
             return;
         } else {
             const admins = this.bot.getAdmins();
             if (!admins || admins.length === 0) {
                 // Just default to same message as if it was disabled
-                this.bot.sendMessage(steamID, '❌ The owner has disabled messages.');
+                this.bot.sendMessage(steamID, '⚠️ The owner has disabled messages.');
                 return;
             }
 
             const msg = message.substr(message.toLowerCase().indexOf('message') + 8);
             if (!msg) {
-                this.bot.sendMessage(steamID, '❌ Please include a message. Here\'s an example: "!message Hi"');
+                this.bot.sendMessage(steamID, '⚠️ Please include a message. Here\'s an example: "!message Hi"');
                 return;
             }
 
@@ -666,7 +671,7 @@ export = class Commands {
     private clearCartCommand(steamID: SteamID): void {
         Cart.removeCart(steamID);
 
-        this.bot.sendMessage(steamID, '🛒 Your cart has been cleared.');
+        this.bot.sendMessage(steamID, '🛒 Your cart has been cleared. ✅');
     }
 
     private checkoutCommand(steamID: SteamID): void {
@@ -688,9 +693,9 @@ export = class Commands {
         if (position === -1) {
             this.bot.sendMessage(steamID, '❌ You are not in the queue.');
         } else if (position === 0) {
-            this.bot.sendMessage(steamID, '⌛ Your offer is being made.');
+            this.bot.sendMessage(steamID, '✅ Your offer is being made.');
         } else {
-            this.bot.sendMessage(steamID, `There is ${position} infront of you.`);
+            this.bot.sendMessage(steamID, `There is ${position} infront of you. 🚶🏻‍♂️🚶🏻‍♀️`);
         }
     }
 
@@ -708,22 +713,22 @@ export = class Commands {
             if (cart.isMade()) {
                 this.bot.sendMessage(
                     steamID,
-                    '⚠️ Your offer is already being sent! Please try again when the offer is active.'
+                    '❌ Your offer is already being sent! Please try again when the offer is active.'
                 );
                 return;
             } else if (cart.isCanceled()) {
                 this.bot.sendMessage(
                     steamID,
-                    '⌛ Your offer is already being canceled. Please wait a few seconds for it to be canceled.'
+                    '❌ Your offer is already being canceled. Please wait a few seconds for it to be canceled.'
                 );
                 return;
             }
 
             cart.setCanceled('BY_USER');
         } else if (positionInQueue !== -1) {
-            // The user is in the queue
+            // The user is in the queu
             this.cartQueue.dequeue(steamID);
-            this.bot.sendMessage(steamID, '✅ You have been removed from the queue.');
+            this.bot.sendMessage(steamID, '❌ You have been removed from the queue.');
         } else {
             // User is not in the queue, check if they have an active offer
 
@@ -766,7 +771,7 @@ export = class Commands {
         if (activeOfferID !== null) {
             this.bot.sendMessage(
                 cart.partner,
-                `❌ You already have an active offer! Please finish it before requesting a new one:  https://steamcommunity.com/tradeoffer/${activeOfferID}/`
+                `❗ You already have an active offer! Please finish it before requesting a new one:  https://steamcommunity.com/tradeoffer/${activeOfferID}/`
             );
             return;
         }
@@ -777,14 +782,14 @@ export = class Commands {
             if (currentPosition === 0) {
                 this.bot.sendMessage(
                     cart.partner,
-                    '⌛ You are already in the queue! Please wait while I process your offer.'
+                    '✅ You are already in the queue! Please wait while I process your offer.'
                 );
             } else {
                 this.bot.sendMessage(
                     cart.partner,
-                    '⌛ You are already in the queue! Please wait your turn, there ' +
+                    '✅ You are already in the queue! Please wait your turn, there ' +
                         (currentPosition !== 1 ? 'are' : 'is') +
-                        ` ${currentPosition} infront of you.`
+                        ` ${currentPosition} infront of you. 🚶🏻‍♂️🚶🏻‍♀️`
                 );
             }
             return;
@@ -795,9 +800,9 @@ export = class Commands {
         if (position !== 0) {
             this.bot.sendMessage(
                 cart.partner,
-                '⌛ You have been added to the queue! Please wait your turn, there ' +
+                '✅ You have been added to the queue! Please wait your turn, there ' +
                     (position !== 1 ? 'are' : 'is') +
-                    ` ${position} infront of you.`
+                    ` ${position} infront of you. 🚶🏻‍♂️🚶🏻‍♀️`
             );
             if (position >= 2 && process.env.DISABLE_SOMETHING_WRONG_ALERT === 'false') {
                 if (
@@ -817,12 +822,11 @@ export = class Commands {
         if (currentCart !== null && !(currentCart instanceof AdminCart)) {
             this.bot.sendMessage(
                 steamID,
-                '❌ You already have a different cart open, finish it before making a new one. 🛒'
+                '❗ You already have a different cart open 🛒, finish it before making a new one.'
             );
             return;
         }
 
-        message = removeLinkProtocol(message);
         const paramStr = CommandParser.removeCommand(message);
 
         const params = CommandParser.parseParams(paramStr);
@@ -861,12 +865,11 @@ export = class Commands {
         if (currentCart !== null && !(currentCart instanceof AdminCart)) {
             this.bot.sendMessage(
                 steamID,
-                '❌ You already have a different cart open, finish it before making a new one. 🛒'
+                '❗ You already have a different cart open 🛒, finish it before making a new one.'
             );
             return;
         }
 
-        message = removeLinkProtocol(message);
         const paramStr = CommandParser.removeCommand(message);
 
         const params = CommandParser.parseParams(paramStr);
@@ -935,7 +938,7 @@ export = class Commands {
         if (currentCart !== null && !(currentCart instanceof UserCart)) {
             this.bot.sendMessage(
                 steamID,
-                '❌ You already have a different cart open, finish it before making a new one. 🛒'
+                '❌ You already have a different cart open 🛒, finish it before making a new one.'
             );
             return;
         }
@@ -961,7 +964,7 @@ export = class Commands {
         if (amountCanTrade <= 0) {
             this.bot.sendMessage(
                 steamID,
-                'I ' +
+                '😣 I ' +
                     (ourAmount > 0 ? "can't sell" : "don't have") +
                     ` any ${(cartAmount > 0 ? 'more ' : '') + pluralize(name, 0)}.`
             );
@@ -974,14 +977,14 @@ export = class Commands {
             if (amount === cartAmount && cartAmount > 0) {
                 this.bot.sendMessage(
                     steamID,
-                    `I don't have any ${(ourAmount > 0 ? 'more ' : '') + pluralize(name, 0)}.`
+                    `😥 I don't have any ${(ourAmount > 0 ? 'more ' : '') + pluralize(name, 0)}.`
                 );
                 return;
             }
 
             this.bot.sendMessage(
                 steamID,
-                `I can only sell ${pluralize(name, amount, true)}. ` +
+                `😣 I can only sell ${pluralize(name, amount, true)}. ` +
                     (amount > 1 ? 'They have' : 'It has') +
                     ' been added to your cart. Type "!cart" to view your cart summary or "!checkout" to checkout. 🛒'
             );
@@ -989,7 +992,7 @@ export = class Commands {
             this.bot.sendMessage(
                 steamID,
                 `✅ ${pluralize(name, Math.abs(amount), true)}` +
-                    ' has been added to your cart. Type "!cart" to view your cart summary or "!checkout" to checkout. 🛒'
+                    ' has been added to your cart. Type !cart to view your cart summary or !checkout to checkout. 🛒'
             );
         }
 
@@ -1003,7 +1006,7 @@ export = class Commands {
         if (currentCart !== null && !(currentCart instanceof UserCart)) {
             this.bot.sendMessage(
                 steamID,
-                '❌ You already have a different cart open, finish it before making a new one. 🛒'
+                '❗ You already have a different cart open 🛒, finish it before making a new one.'
             );
             return;
         }
@@ -1029,7 +1032,7 @@ export = class Commands {
         if (amountCanTrade <= 0) {
             this.bot.sendMessage(
                 steamID,
-                'I ' +
+                '😰 I ' +
                     (ourAmount > 0 ? "can't buy" : "don't want") +
                     ` any ${(cartAmount > 0 ? 'more ' : '') + pluralize(name, 0)}.`
             );
@@ -1040,13 +1043,13 @@ export = class Commands {
             amount = amountCanTrade;
 
             if (amount === cartAmount && cartAmount > 0) {
-                this.bot.sendMessage(steamID, `I don't want any more ${pluralize(name, 0)}.`);
+                this.bot.sendMessage(steamID, `😥 I don't want any more ${pluralize(name, 0)}.`);
                 return;
             }
 
             this.bot.sendMessage(
                 steamID,
-                `I can only buy ${pluralize(name, amount, true)}. ` +
+                `🤕 I can only buy ${pluralize(name, amount, true)}. ` +
                     (amount > 1 ? 'They have' : 'It has') +
                     ' been added to your cart. Type "!cart" to view your cart summary or "!checkout" to checkout. 🛒'
             );
@@ -1054,7 +1057,7 @@ export = class Commands {
             this.bot.sendMessage(
                 steamID,
                 `✅ ${pluralize(name, Math.abs(amount), true)}` +
-                    ' has been added to your cart. Type "!cart" to view your cart summary or "!checkout" to checkout. 🛒'
+                    ' has been added to your cart. Type !cart to view your cart summary or !checkout to checkout. 🛒'
             );
         }
 
@@ -1119,7 +1122,7 @@ export = class Commands {
                     match = match.splice(0, 20);
                 }
 
-                let reply = `I've found ${match.length} items. Try with one of the items shown below:\n${match.join(
+                let reply = `👩🏻‍💻 I've found ${match.length} items. Try with one of the items shown below:\n${match.join(
                     ',\n'
                 )}`;
                 if (matchCount > match.length) {
@@ -1257,6 +1260,25 @@ export = class Commands {
                     pricelist[i].enabled = params.enabled;
                 }
 
+                if (params.buy && typeof params.buy === 'object') {
+                    pricelist[i].buy.keys = params.buy.keys || 0;
+                    pricelist[i].buy.metal = params.buy.metal || 0;
+
+                    if (params.autoprice === undefined) {
+                        pricelist[i].time = null;
+                        pricelist[i].autoprice = false;
+                    }
+                }
+                if (typeof params.sell === 'object') {
+                    pricelist[i].sell.keys = params.sell.keys || 0;
+                    pricelist[i].sell.metal = params.sell.metal || 0;
+
+                    if (params.autoprice === undefined) {
+                        pricelist[i].time = null;
+                        pricelist[i].autoprice = false;
+                    }
+                }
+
                 if (params.autoprice === false) {
                     pricelist[i].time = null;
                     pricelist[i].autoprice = false;
@@ -1345,7 +1367,7 @@ export = class Commands {
                     match = match.splice(0, 20);
                 }
 
-                let reply = `I've found ${match.length} items. Try with one of the items shown below:\n${match.join(
+                let reply = `👩🏻‍💻 I've found ${match.length} items. Try with one of the items shown below:\n${match.join(
                     ',\n'
                 )}`;
                 if (matchCount > match.length) {
@@ -1433,7 +1455,7 @@ export = class Commands {
                 return;
             }
 
-            this.bot.sendMessage(steamID, `⌛ Price check requested for ${body.name}, the item will be checked.`);
+            this.bot.sendMessage(steamID, `📝 Price check requested for ${body.name}, the item will be checked.`);
         });
     }
 
@@ -1638,7 +1660,7 @@ export = class Commands {
     private versionCommand(steamID: SteamID): void {
         this.bot.sendMessage(
             steamID,
-            `Currently running tf2-automatic@v${process.env.BOT_VERSION}. Checking for a new version...`
+            `✅ Currently running tf2-automatic@v${process.env.BOT_VERSION}. Checking for a new version...`
         );
 
         this.bot
@@ -1649,8 +1671,7 @@ export = class Commands {
                 } else if (this.bot.lastNotifiedVersion === latestVersion) {
                     this.bot.sendMessage(
                         steamID,
-                        `⚠️ Update available! Current: v${process.env.BOT_VERSION}, Latest: v${latestVersion}.\nNavigate to your bot folder and run [git stash && git checkout Public && git pull && npm install && npm run build] and then restart your bot.` +
-                            '\n Contact IdiNium if you have any other problem. Thank you.'
+                        `⚠️ Update available! Current: v${process.env.BOT_VERSION}, Latest: v${latestVersion}.\nSee the wiki for help: https://github.com/Nicklason/tf2-automatic/wiki/Updating`
                     );
                 }
             })
@@ -1678,7 +1699,7 @@ export = class Commands {
                     return;
                 }
 
-                this.bot.sendMessage(steamID, '✅ Successfully changed name.');
+                this.bot.sendMessage(steamID, 'Successfully changed name. ✅');
             }
         );
     }
@@ -1689,7 +1710,7 @@ export = class Commands {
         if (imageUrl === '') {
             this.bot.sendMessage(
                 steamID,
-                '❌ You forgot to add an image url. Example: "!avatar https://steamuserimages-a.akamaihd.net/ugc/949595415286366323/8FECE47652C9D77501035833E937584E30D0F5E7/"'
+                '❗ You forgot to add an image url. Example: "!avatar https://steamuserimages-a.akamaihd.net/ugc/949595415286366323/8FECE47652C9D77501035833E937584E30D0F5E7/"'
             );
             return;
         }
@@ -1697,7 +1718,7 @@ export = class Commands {
         if (!validUrl.isUri(imageUrl)) {
             this.bot.sendMessage(
                 steamID,
-                '❌ Your url is not valid. Example: "!avatar https://steamuserimages-a.akamaihd.net/ugc/949595415286366323/8FECE47652C9D77501035833E937584E30D0F5E7/"'
+                '❗ Your url is not valid. Example: "!avatar https://steamuserimages-a.akamaihd.net/ugc/949595415286366323/8FECE47652C9D77501035833E937584E30D0F5E7/"'
             );
             return;
         }
@@ -1766,6 +1787,14 @@ export = class Commands {
     }
 
     private tradesCommand(steamID: SteamID): void {
+        if (process.env.ENABLE_MANUAL_REVIEW === 'false') {
+            this.bot.sendMessage(
+                steamID,
+                '❌ Manual review is disabled, enable it by setting `ENABLE_MANUAL_REVIEW` to true'
+            );
+            return;
+        }
+
         // Go through polldata and find active offers
 
         const pollData = this.bot.manager.pollData;
@@ -1799,7 +1828,7 @@ export = class Commands {
 
         offers.sort((a, b) => a.id - b.id);
 
-        let reply = `There is ${offers.length} active ${pluralize('offer', offers.length)} that you can review:`;
+        let reply = `🧾 There is ${offers.length} active ${pluralize('offer', offers.length)} that you can review:`;
 
         for (let i = 0; i < offers.length; i++) {
             const offer = offers[i];
@@ -1816,7 +1845,7 @@ export = class Commands {
         const offerId = CommandParser.removeCommand(message).trim();
 
         if (offerId === '') {
-            this.bot.sendMessage(steamID, '⚠️ Missing offer id. Example: "!trade 3957959294"');
+            this.bot.sendMessage(steamID, 'Missing offer id. Example: "!trade 3957959294" ❌');
             return;
         }
 
@@ -1891,7 +1920,7 @@ export = class Commands {
         const offerId = new RegExp(/\d+/).exec(offerIdAndMessage);
         let offerIdString: string;
         if (isNaN(+offerId) || !offerId) {
-            this.bot.sendMessage(steamID, '⚠️ Missing offer id. Example: "!accept 3957959294"');
+            this.bot.sendMessage(steamID, 'Missing offer id. Example: "!accept 3957959294" ⚠️');
             return;
         } else {
             offerIdString = offerId.toString();
@@ -1900,20 +1929,20 @@ export = class Commands {
         const state = this.bot.manager.pollData.received[offerIdString];
 
         if (state === undefined) {
-            this.bot.sendMessage(steamID, '❌ Offer does not exist.');
+            this.bot.sendMessage(steamID, 'Offer does not exist. ❌');
             return;
         }
 
         if (state !== TradeOfferManager.ETradeOfferState.Active) {
             // TODO: Add what the offer is now, accepted / declined and why
-            this.bot.sendMessage(steamID, '❌ Offer is not active.');
+            this.bot.sendMessage(steamID, 'Offer is not active. ❌');
             return;
         }
 
         const offerData = this.bot.manager.pollData.offerData[offerIdString];
 
         if (offerData?.action.action !== 'skip') {
-            this.bot.sendMessage(steamID, "❌ Offer can't be reviewed.");
+            this.bot.sendMessage(steamID, "Offer can't be reviewed. ❌");
             return;
         }
 
@@ -1956,7 +1985,7 @@ export = class Commands {
         const offerId = new RegExp(/\d+/).exec(offerIdAndMessage);
         let offerIdString: string;
         if (isNaN(+offerId) || !offerId) {
-            this.bot.sendMessage(steamID, '⚠️ Missing offer id. Example: "!decline 3957959294"');
+            this.bot.sendMessage(steamID, 'Missing offer id. Example: "!decline 3957959294" ⚠️');
             return;
         } else {
             offerIdString = offerId.toString();
@@ -1965,20 +1994,20 @@ export = class Commands {
         const state = this.bot.manager.pollData.received[offerIdString];
 
         if (state === undefined) {
-            this.bot.sendMessage(steamID, '❌ Offer does not exist.');
+            this.bot.sendMessage(steamID, 'Offer does not exist. ❌');
             return;
         }
 
         if (state !== TradeOfferManager.ETradeOfferState.Active) {
             // TODO: Add what the offer is now, accepted / declined and why
-            this.bot.sendMessage(steamID, '❌ Offer is not active.');
+            this.bot.sendMessage(steamID, 'Offer is not active. ❌');
             return;
         }
 
         const offerData = this.bot.manager.pollData.offerData[offerIdString];
 
         if (offerData?.action.action !== 'skip') {
-            this.bot.sendMessage(steamID, "❌ Offer can't be reviewed.");
+            this.bot.sendMessage(steamID, "Offer can't be reviewed. ❌");
             return;
         }
 
@@ -2042,7 +2071,7 @@ export = class Commands {
             this.bot.pricelist
                 .removeAll()
                 .then(() => {
-                    this.bot.sendMessage(steamID, '✅ Cleared pricelist!');
+                    this.bot.sendMessage(steamID, '♻ Cleared pricelist!');
                 })
                 .catch(err => {
                     this.bot.sendMessage(steamID, `❌ Failed to clear pricelist: ${err.message}`);
@@ -2066,7 +2095,7 @@ export = class Commands {
                     match = match.splice(0, 20);
                 }
 
-                let reply = `I've found ${match.length} items. Try with one of the items shown below:\n${match.join(
+                let reply = `👩🏻‍💻 I've found ${match.length} items. Try with one of the items shown below:\n${match.join(
                     ',\n'
                 )}`;
                 if (matchCount > match.length) {
@@ -2093,7 +2122,7 @@ export = class Commands {
         this.bot.pricelist
             .removePrice(params.sku as string, true)
             .then(entry => {
-                this.bot.sendMessage(steamID, `✅ Removed "${entry.name}".`);
+                this.bot.sendMessage(steamID, `🚮 Removed "${entry.name}".`);
             })
             .catch(err => {
                 this.bot.sendMessage(steamID, `❌ Failed to remove pricelist entry: ${err.message}`);
@@ -2144,7 +2173,7 @@ export = class Commands {
                 match = match.splice(0, 20);
             }
 
-            let reply = `I've found ${match.length} items. Try with one of the items shown below:\n${match.join(
+            let reply = `👩🏻‍💻 I've found ${match.length} items. Try with one of the items shown below:\n${match.join(
                 ',\n'
             )}`;
             if (matchCount > match.length) {
@@ -2194,7 +2223,7 @@ export = class Commands {
 
                 const parsed = match.splice(0, 20).map(schemaItem => schemaItem.defindex + ` (${schemaItem.name})`);
 
-                let reply = `I've found ${matchCount} items with a matching name. Please use one of the defindexes below as "defindex":\n${parsed.join(
+                let reply = `👩🏻‍💻 I've found ${matchCount} items with a matching name. Please use one of the defindexes below as "defindex":\n${parsed.join(
                     ',\n'
                 )}`;
                 if (matchCount > parsed.length) {
@@ -2223,7 +2252,7 @@ export = class Commands {
         }
 
         if (!foundSomething) {
-            this.bot.sendMessage(steamID, '⚠️ Missing item properties.');
+            this.bot.sendMessage(steamID, '⚠️ Missing name/sku properties.');
             return null;
         }
 
@@ -2357,7 +2386,7 @@ export = class Commands {
 
                 const parsed = match.splice(0, 20).map(schemaItem => schemaItem.defindex + ` (${schemaItem.name})`);
 
-                let reply = `I've found ${matchCount} items with a matching name. Please use one of the defindexes below as "output":\n${parsed.join(
+                let reply = `👩🏻‍💻 I've found ${matchCount} items with a matching name. Please use one of the defindexes below as "output":\n${parsed.join(
                     ',\n'
                 )}`;
                 if (matchCount > parsed.length) {
@@ -2403,6 +2432,593 @@ export = class Commands {
         delete params.name;
 
         return fixItem(item, this.bot.schema);
+    }
+
+    private craftWeapons(): string[] {
+        const craftWeaponsStock: string[] = [];
+        const craftWeapons = [
+            {
+                name: 'Ambassador',
+                amount: this.bot.inventoryManager.getInventory().getAmount('61;6')
+            },
+            {
+                name: 'B.A.S.E Jumper',
+                amount: this.bot.inventoryManager.getInventory().getAmount('1101;6')
+            },
+            {
+                name: "Battalion's Backup",
+                amount: this.bot.inventoryManager.getInventory().getAmount('226;6')
+            },
+            {
+                name: 'Bonk! Atomic Punch',
+                amount: this.bot.inventoryManager.getInventory().getAmount('46;6')
+            },
+            {
+                name: 'Buff Banner',
+                amount: this.bot.inventoryManager.getInventory().getAmount('129;6')
+            },
+            {
+                name: 'Buffalo Steak Sandvich',
+                amount: this.bot.inventoryManager.getInventory().getAmount('311;6')
+            },
+            {
+                name: "Chargin' Targe",
+                amount: this.bot.inventoryManager.getInventory().getAmount('131;6')
+            },
+            {
+                name: "Cleaner's Carbine",
+                amount: this.bot.inventoryManager.getInventory().getAmount('751;6')
+            },
+            {
+                name: 'Concheror',
+                amount: this.bot.inventoryManager.getInventory().getAmount('354;6')
+            },
+            {
+                name: 'Cozy Camper',
+                amount: this.bot.inventoryManager.getInventory().getAmount('642;6')
+            },
+            {
+                name: 'Crit-a-Cola',
+                amount: this.bot.inventoryManager.getInventory().getAmount('163;6')
+            },
+            {
+                name: 'Dalokohs Bar',
+                amount: this.bot.inventoryManager.getInventory().getAmount('159;6')
+            },
+            {
+                name: "Darwin's Danger Shield",
+                amount: this.bot.inventoryManager.getInventory().getAmount('231;6')
+            },
+            {
+                name: 'Detonator',
+                amount: this.bot.inventoryManager.getInventory().getAmount('351;6')
+            },
+            {
+                name: 'Diamondback',
+                amount: this.bot.inventoryManager.getInventory().getAmount('525;6')
+            },
+            {
+                name: 'Enforcer',
+                amount: this.bot.inventoryManager.getInventory().getAmount('460;6')
+            },
+            {
+                name: 'Family Business',
+                amount: this.bot.inventoryManager.getInventory().getAmount('425;6')
+            },
+            {
+                name: 'Flare Gun',
+                amount: this.bot.inventoryManager.getInventory().getAmount('39;6')
+            },
+            {
+                name: 'Flying Guillotine',
+                amount: this.bot.inventoryManager.getInventory().getAmount('812;6')
+            },
+            {
+                name: 'Gunboats',
+                amount: this.bot.inventoryManager.getInventory().getAmount('133;6')
+            },
+            {
+                name: 'Jarate',
+                amount: this.bot.inventoryManager.getInventory().getAmount('58;6')
+            },
+            {
+                name: 'Kritzkrieg',
+                amount: this.bot.inventoryManager.getInventory().getAmount('35;6')
+            },
+            {
+                name: "L'Etranger",
+                amount: this.bot.inventoryManager.getInventory().getAmount('224;6')
+            },
+            {
+                name: 'Mad Milk',
+                amount: this.bot.inventoryManager.getInventory().getAmount('222;6')
+            },
+            {
+                name: 'Manmelter',
+                amount: this.bot.inventoryManager.getInventory().getAmount('595;6')
+            },
+            {
+                name: 'Mantreads',
+                amount: this.bot.inventoryManager.getInventory().getAmount('444;6')
+            },
+            {
+                name: "Pretty Boy's Pocket Pistol",
+                amount: this.bot.inventoryManager.getInventory().getAmount('773;6')
+            },
+            {
+                name: 'Quick-Fix',
+                amount: this.bot.inventoryManager.getInventory().getAmount('411;6')
+            },
+            {
+                name: 'Quickiebomb Launcher',
+                amount: this.bot.inventoryManager.getInventory().getAmount('1150;6')
+            },
+            {
+                name: 'Razorback',
+                amount: this.bot.inventoryManager.getInventory().getAmount('57;6')
+            },
+            {
+                name: 'Reserve Shooter',
+                amount: this.bot.inventoryManager.getInventory().getAmount('415;6')
+            },
+            {
+                name: 'Righteous Bison',
+                amount: this.bot.inventoryManager.getInventory().getAmount('442;6')
+            },
+            {
+                name: 'Sandvich',
+                amount: this.bot.inventoryManager.getInventory().getAmount('42;6')
+            },
+            {
+                name: 'Scorch Shot',
+                amount: this.bot.inventoryManager.getInventory().getAmount('740;6')
+            },
+            {
+                name: 'Scottish Resistance',
+                amount: this.bot.inventoryManager.getInventory().getAmount('130;6')
+            },
+            {
+                name: 'Short Circuit',
+                amount: this.bot.inventoryManager.getInventory().getAmount('528;6')
+            },
+            {
+                name: 'Splendid Screen',
+                amount: this.bot.inventoryManager.getInventory().getAmount('406;6')
+            },
+            {
+                name: 'Sticky Jumper',
+                amount: this.bot.inventoryManager.getInventory().getAmount('265;6')
+            },
+            {
+                name: 'Tide Turner',
+                amount: this.bot.inventoryManager.getInventory().getAmount('1099;6')
+            },
+            {
+                name: 'Vaccinator',
+                amount: this.bot.inventoryManager.getInventory().getAmount('998;6')
+            },
+            {
+                name: 'Winger',
+                amount: this.bot.inventoryManager.getInventory().getAmount('449;6')
+            },
+            {
+                name: 'Wrangler',
+                amount: this.bot.inventoryManager.getInventory().getAmount('140;6')
+            },
+            {
+                name: 'Air Strike',
+                amount: this.bot.inventoryManager.getInventory().getAmount('1104;6')
+            },
+            {
+                name: "Ali Baba's Wee Booties",
+                amount: this.bot.inventoryManager.getInventory().getAmount('405;6')
+            },
+            {
+                name: "Baby Face's Blaster",
+                amount: this.bot.inventoryManager.getInventory().getAmount('772;6')
+            },
+            {
+                name: 'Back Scatter',
+                amount: this.bot.inventoryManager.getInventory().getAmount('1103;6')
+            },
+            {
+                name: 'Backburner',
+                amount: this.bot.inventoryManager.getInventory().getAmount('40;6')
+            },
+            {
+                name: 'Bazaar Bargain',
+                amount: this.bot.inventoryManager.getInventory().getAmount('402;6')
+            },
+            {
+                name: "Beggar's Bazooka",
+                amount: this.bot.inventoryManager.getInventory().getAmount('730;6')
+            },
+            {
+                name: 'Black Box',
+                amount: this.bot.inventoryManager.getInventory().getAmount('228;6')
+            },
+            {
+                name: 'Blutsauger',
+                amount: this.bot.inventoryManager.getInventory().getAmount('36;6')
+            },
+            {
+                name: 'Bootlegger',
+                amount: this.bot.inventoryManager.getInventory().getAmount('608;6')
+            },
+            {
+                name: 'Brass Beast',
+                amount: this.bot.inventoryManager.getInventory().getAmount('312;6')
+            },
+            {
+                name: 'Classic',
+                amount: this.bot.inventoryManager.getInventory().getAmount('1098;6')
+            },
+            {
+                name: 'Cow Mangler 5000',
+                amount: this.bot.inventoryManager.getInventory().getAmount('441;6')
+            },
+            {
+                name: "Crusader's Crossbow",
+                amount: this.bot.inventoryManager.getInventory().getAmount('305;6')
+            },
+            {
+                name: 'Degreaser',
+                amount: this.bot.inventoryManager.getInventory().getAmount('215;6')
+            },
+            {
+                name: 'Direct Hit',
+                amount: this.bot.inventoryManager.getInventory().getAmount('127;6')
+            },
+            {
+                name: 'Force-A-Nature',
+                amount: this.bot.inventoryManager.getInventory().getAmount('45;6')
+            },
+            {
+                name: 'Fortified Compound',
+                amount: this.bot.inventoryManager.getInventory().getAmount('1092;6')
+            },
+            {
+                name: 'Frontier Justice',
+                amount: this.bot.inventoryManager.getInventory().getAmount('141;6')
+            },
+            {
+                name: "Hitman's Heatmaker",
+                amount: this.bot.inventoryManager.getInventory().getAmount('752;6')
+            },
+            {
+                name: 'Huntsman',
+                amount: this.bot.inventoryManager.getInventory().getAmount('56;6')
+            },
+            {
+                name: 'Huo-Long Heater',
+                amount: this.bot.inventoryManager.getInventory().getAmount('811;6')
+            },
+            {
+                name: 'Iron Bomber',
+                amount: this.bot.inventoryManager.getInventory().getAmount('1151;6')
+            },
+            {
+                name: 'Liberty Launcher',
+                amount: this.bot.inventoryManager.getInventory().getAmount('414;6')
+            },
+            {
+                name: 'Loch-n-Load',
+                amount: this.bot.inventoryManager.getInventory().getAmount('308;6')
+            },
+            {
+                name: 'Loose Cannon',
+                amount: this.bot.inventoryManager.getInventory().getAmount('996;6')
+            },
+            {
+                name: 'Machina',
+                amount: this.bot.inventoryManager.getInventory().getAmount('526;6')
+            },
+            {
+                name: 'Natascha',
+                amount: this.bot.inventoryManager.getInventory().getAmount('41;6')
+            },
+            {
+                name: 'Original',
+                amount: this.bot.inventoryManager.getInventory().getAmount('513;6')
+            },
+            {
+                name: 'Overdose',
+                amount: this.bot.inventoryManager.getInventory().getAmount('412;6')
+            },
+            {
+                name: 'Panic Attack',
+                amount: this.bot.inventoryManager.getInventory().getAmount('1153;6')
+            },
+            {
+                name: 'Phlogistinator',
+                amount: this.bot.inventoryManager.getInventory().getAmount('594;6')
+            },
+            {
+                name: 'Pomson 6000',
+                amount: this.bot.inventoryManager.getInventory().getAmount('588;6')
+            },
+            {
+                name: 'Rainblower',
+                amount: this.bot.inventoryManager.getInventory().getAmount('741;6')
+            },
+            {
+                name: 'Rescue Ranger',
+                amount: this.bot.inventoryManager.getInventory().getAmount('997;6')
+            },
+            {
+                name: 'Rocket Jumper',
+                amount: this.bot.inventoryManager.getInventory().getAmount('237;6')
+            },
+            {
+                name: 'Shortstop',
+                amount: this.bot.inventoryManager.getInventory().getAmount('220;6')
+            },
+            {
+                name: 'Soda Popper',
+                amount: this.bot.inventoryManager.getInventory().getAmount('448;6')
+            },
+            {
+                name: 'Sydney Sleeper',
+                amount: this.bot.inventoryManager.getInventory().getAmount('230;6')
+            },
+            {
+                name: 'Tomislav',
+                amount: this.bot.inventoryManager.getInventory().getAmount('424;6')
+            },
+            {
+                name: 'Widowmaker',
+                amount: this.bot.inventoryManager.getInventory().getAmount('527;6')
+            },
+            {
+                name: 'Cloak and Dagger',
+                amount: this.bot.inventoryManager.getInventory().getAmount('60;6')
+            },
+            {
+                name: 'Dead Ringer',
+                amount: this.bot.inventoryManager.getInventory().getAmount('59;6')
+            },
+            {
+                name: 'Amputator',
+                amount: this.bot.inventoryManager.getInventory().getAmount('304;6')
+            },
+            {
+                name: 'Atomizer',
+                amount: this.bot.inventoryManager.getInventory().getAmount('450;6')
+            },
+            {
+                name: 'Axtinguisher',
+                amount: this.bot.inventoryManager.getInventory().getAmount('38;6')
+            },
+            {
+                name: 'Back Scratcher',
+                amount: this.bot.inventoryManager.getInventory().getAmount('326;6')
+            },
+            {
+                name: 'Bat Outta Hell',
+                amount: this.bot.inventoryManager.getInventory().getAmount('939;6')
+            },
+            {
+                name: 'Big Earner',
+                amount: this.bot.inventoryManager.getInventory().getAmount('461;6')
+            },
+            {
+                name: 'Boston Basher',
+                amount: this.bot.inventoryManager.getInventory().getAmount('325;6')
+            },
+            {
+                name: 'Bushwacka',
+                amount: this.bot.inventoryManager.getInventory().getAmount('232;6')
+            },
+            {
+                name: 'Candy Cane',
+                amount: this.bot.inventoryManager.getInventory().getAmount('317;6')
+            },
+            {
+                name: 'Claidheamh Mòr',
+                amount: this.bot.inventoryManager.getInventory().getAmount('327;6')
+            },
+            {
+                name: "Conniver's Kunai",
+                amount: this.bot.inventoryManager.getInventory().getAmount('356;6')
+            },
+            {
+                name: 'Disciplinary Action',
+                amount: this.bot.inventoryManager.getInventory().getAmount('447;6')
+            },
+            {
+                name: 'Equalizer',
+                amount: this.bot.inventoryManager.getInventory().getAmount('128;6')
+            },
+            {
+                name: 'Escape Plan',
+                amount: this.bot.inventoryManager.getInventory().getAmount('775;6')
+            },
+            {
+                name: 'Eureka Effect',
+                amount: this.bot.inventoryManager.getInventory().getAmount('589;6')
+            },
+            {
+                name: 'Eviction Notice',
+                amount: this.bot.inventoryManager.getInventory().getAmount('426;6')
+            },
+            {
+                name: 'Eyelander',
+                amount: this.bot.inventoryManager.getInventory().getAmount('132;6')
+            },
+            {
+                name: "Fan O'War",
+                amount: this.bot.inventoryManager.getInventory().getAmount('355;6')
+            },
+            {
+                name: 'Fists of Steel',
+                amount: this.bot.inventoryManager.getInventory().getAmount('331;6')
+            },
+            {
+                name: 'Gloves of Running Urgently',
+                amount: this.bot.inventoryManager.getInventory().getAmount('239;6')
+            },
+            {
+                name: 'Gunslinger',
+                amount: this.bot.inventoryManager.getInventory().getAmount('142;6')
+            },
+            {
+                name: 'Half-Zatoichi',
+                amount: this.bot.inventoryManager.getInventory().getAmount('357;6')
+            },
+            {
+                name: 'Holiday Punch',
+                amount: this.bot.inventoryManager.getInventory().getAmount('656;6')
+            },
+            {
+                name: 'Holy Mackerel',
+                amount: this.bot.inventoryManager.getInventory().getAmount('221;6')
+            },
+            {
+                name: 'Homewrecker',
+                amount: this.bot.inventoryManager.getInventory().getAmount('153;6')
+            },
+            {
+                name: 'Jag',
+                amount: this.bot.inventoryManager.getInventory().getAmount('329;6')
+            },
+            {
+                name: 'Killing Gloves of Boxing',
+                amount: this.bot.inventoryManager.getInventory().getAmount('43;6')
+            },
+            {
+                name: 'Lollichop',
+                amount: this.bot.inventoryManager.getInventory().getAmount('739;6')
+            },
+            {
+                name: 'Market Gardener',
+                amount: this.bot.inventoryManager.getInventory().getAmount('416;6')
+            },
+            {
+                name: 'Neon Annihilator',
+                amount: this.bot.inventoryManager.getInventory().getAmount('813;6')
+            },
+            {
+                name: "Nessie's Nine Iron",
+                amount: this.bot.inventoryManager.getInventory().getAmount('482;6')
+            },
+            {
+                name: 'Pain Train',
+                amount: this.bot.inventoryManager.getInventory().getAmount('154;6')
+            },
+            {
+                name: 'Persian Persuader',
+                amount: this.bot.inventoryManager.getInventory().getAmount('404;6')
+            },
+            {
+                name: 'Postal Pummeler',
+                amount: this.bot.inventoryManager.getInventory().getAmount('457;6')
+            },
+            {
+                name: 'Powerjack',
+                amount: this.bot.inventoryManager.getInventory().getAmount('214;6')
+            },
+            {
+                name: 'Sandman',
+                amount: this.bot.inventoryManager.getInventory().getAmount('44;6')
+            },
+            {
+                name: "Scotsman's Skullcutter",
+                amount: this.bot.inventoryManager.getInventory().getAmount('172;6')
+            },
+            {
+                name: 'Scottish Handshake',
+                amount: this.bot.inventoryManager.getInventory().getAmount('609;6')
+            },
+            {
+                name: 'Shahanshah',
+                amount: this.bot.inventoryManager.getInventory().getAmount('401;6')
+            },
+            {
+                name: 'Sharpened Volcano Fragment',
+                amount: this.bot.inventoryManager.getInventory().getAmount('348;6')
+            },
+            {
+                name: 'Solemn Vow',
+                amount: this.bot.inventoryManager.getInventory().getAmount('413;6')
+            },
+            {
+                name: 'Southern Hospitality',
+                amount: this.bot.inventoryManager.getInventory().getAmount('155;6')
+            },
+            {
+                name: 'Spy-cicle',
+                amount: this.bot.inventoryManager.getInventory().getAmount('649;6')
+            },
+            {
+                name: 'Sun-on-a-Stick',
+                amount: this.bot.inventoryManager.getInventory().getAmount('349;6')
+            },
+            {
+                name: 'Third Degree',
+                amount: this.bot.inventoryManager.getInventory().getAmount('593;6')
+            },
+            {
+                name: "Tribalman's Shiv",
+                amount: this.bot.inventoryManager.getInventory().getAmount('171;6')
+            },
+            {
+                name: 'Ubersaw',
+                amount: this.bot.inventoryManager.getInventory().getAmount('37;6')
+            },
+            {
+                name: 'Ullapool Caber',
+                amount: this.bot.inventoryManager.getInventory().getAmount('307;6')
+            },
+            {
+                name: 'Vita-Saw',
+                amount: this.bot.inventoryManager.getInventory().getAmount('173;6')
+            },
+            {
+                name: "Warrior's Spirit",
+                amount: this.bot.inventoryManager.getInventory().getAmount('310;6')
+            },
+            {
+                name: 'Wrap Assassin',
+                amount: this.bot.inventoryManager.getInventory().getAmount('648;6')
+            },
+            {
+                name: 'Your Eternal Reward',
+                amount: this.bot.inventoryManager.getInventory().getAmount('225;6')
+            },
+            {
+                name: 'Red-Tape Recorder',
+                amount: this.bot.inventoryManager.getInventory().getAmount('810;6')
+            },
+            {
+                name: 'Gas Passer',
+                amount: this.bot.inventoryManager.getInventory().getAmount('1180;6')
+            },
+            {
+                name: 'Second Banana',
+                amount: this.bot.inventoryManager.getInventory().getAmount('1190;6')
+            },
+            {
+                name: 'Thermal Thruster',
+                amount: this.bot.inventoryManager.getInventory().getAmount('1179;6')
+            },
+            {
+                name: "Dragon's Fury",
+                amount: this.bot.inventoryManager.getInventory().getAmount('1178;6')
+            },
+            {
+                name: 'Hot Hand',
+                amount: this.bot.inventoryManager.getInventory().getAmount('1181;6')
+            }
+        ];
+
+        for (let i = 0; i < craftWeapons.length; i++) {
+            craftWeaponsStock.push(
+                craftWeapons[i].name +
+                    ': ' +
+                    (craftWeapons[i].amount <= 6 ? craftWeapons[i].amount + ' ❗❗' : craftWeapons[i].amount + ' ✅')
+            );
+        }
+        return craftWeaponsStock;
     }
 };
 

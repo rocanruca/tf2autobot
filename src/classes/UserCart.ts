@@ -27,11 +27,11 @@ class UserCart extends Cart {
         ]);
 
         if (banned) {
-            return Promise.reject('you are banned in one or more trading communities');
+            return Promise.reject('⛔ you are banned in one or more trading communities');
         }
 
         if (escrow) {
-            return Promise.reject('trade would be held');
+            return Promise.reject('❗ trade would be held');
         }
 
         // TODO: Check for dupes
@@ -435,7 +435,7 @@ class UserCart extends Cart {
         try {
             await theirInventory.fetch();
         } catch (err) {
-            return Promise.reject('Failed to load inventories (Steam might be down)');
+            return Promise.reject('❌ Failed to load inventories (Steam might be down)');
         }
 
         // Add their items
@@ -824,9 +824,9 @@ class UserCart extends Cart {
 
         const { isBuyer, currencies } = this.getCurrencies();
 
-        let str = '🛒== YOUR CART ==🛒';
+        let str = '🛒 == YOUR CART == 🛒';
 
-        str += '\n\nMy side (items you will receive):';
+        str += '\n\n📥 My side (items you will receive): 📥';
         for (const sku in this.our) {
             if (!Object.prototype.hasOwnProperty.call(this.our, sku)) {
                 continue;
@@ -841,7 +841,7 @@ class UserCart extends Cart {
             str += '\n' + (Object.keys(this.our).length === 0 ? '' : 'and ') + currencies.toString();
         }
 
-        str += '\n\nYour side (items you will lose):';
+        str += '\n\n📤 Your side (items you will lose): 📤';
         for (const sku in this.their) {
             if (!Object.prototype.hasOwnProperty.call(this.their, sku)) {
                 continue;

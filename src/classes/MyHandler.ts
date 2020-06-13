@@ -91,17 +91,17 @@ export = class MyHandler extends Handler {
             this.dupeCheckEnabled = true;
         }
 
-        const minimumKeysDupeCheck = parseInt(process.env.MINIMUM_KEYS_DUPE_CHECK);
-        if (!isNaN(minimumKeysDupeCheck)) {
-            this.minimumKeysDupeCheck = minimumKeysDupeCheck;
-        }
-
         if (process.env.ENABLE_AUTO_SELL_AND_BUY_KEYS === 'true') {
             this.autokeysEnabled = true;
         }
 
         if (process.env.ENABLE_AUTO_KEY_BANKING === 'true') {
             this.keyBankingEnabled = true;
+        }
+
+        const minimumKeysDupeCheck = parseInt(process.env.MINIMUM_KEYS_DUPE_CHECK);
+        if (!isNaN(minimumKeysDupeCheck)) {
+            this.minimumKeysDupeCheck = minimumKeysDupeCheck;
         }
 
         const groups = parseJSON(process.env.GROUPS);
@@ -198,7 +198,7 @@ export = class MyHandler extends Handler {
             }
 
             if (process.env.ENABLE_AUTO_SELL_AND_BUY_KEYS === 'true' && this.checkAutokeysStatus === true) {
-                log.debug('Disabling Autokeys...');
+                log.debug('Disabling autokeys...');
                 this.updateToDisableAutokeys();
             }
 
@@ -458,6 +458,8 @@ export = class MyHandler extends Handler {
 
         let assetidsToCheck = [];
 
+        offer.data('prices', itemPrices);
+
         for (let i = 0; i < states.length; i++) {
             const buying = states[i];
             const which = buying ? 'their' : 'our';
@@ -570,8 +572,6 @@ export = class MyHandler extends Handler {
             },
             rate: keyPrice.metal
         });
-
-        offer.data('prices', itemPrices);
 
         if (exchange.contains.metal && !exchange.contains.keys && !exchange.contains.items) {
             // Offer only contains metal
@@ -806,9 +806,9 @@ export = class MyHandler extends Handler {
                     if (offer.data('canceledByUser') === true) {
                         reason = 'Offer was canceled by user';
                     } else if (oldState === TradeOfferManager.ETradeOfferState.CreatedNeedsConfirmation) {
-                        reason = 'Failed to accept mobile confirmation';
+                        reason = 'Failed to accept mobile confirmation, you can try send the trade again';
                     } else {
-                        reason = 'The offer has been active for a while';
+                        reason = 'The offer has been active for a while, you can try send the trade again';
                     }
 
                     this.bot.sendMessage(
@@ -832,7 +832,7 @@ export = class MyHandler extends Handler {
 
                 offer.log('trade', 'has been accepted.');
 
-                // Auto sell and buy keys if ref < minimum
+                // Auto sell keys if ref < minimum
                 this.autokeys();
 
                 const isAutoKeysEnabled = this.autokeysEnabled;
@@ -1021,6 +1021,7 @@ export = class MyHandler extends Handler {
             const reviewReasons: string[] = [];
             let note: string;
             let missingPureNote: string;
+
             if (meta.uniqueReasons.includes('🟨INVALID_ITEMS')) {
                 note = process.env.INVALID_ITEMS_NOTE
                     ? `🟨INVALID_ITEMS - ${process.env.INVALID_ITEMS_NOTE}`
@@ -1039,8 +1040,8 @@ export = class MyHandler extends Handler {
                     : '🟥INVALID_VALUE - Your offer will be ignored. Please cancel it and make another offer with correct value.';
                 reviewReasons.push(note);
                 missingPureNote =
-                    "\n[You're missing: " +
-                    (itemsList.includes('5021;6') ? `${valueDiffKey}]` : `${valueDiffRef} ref]`);
+                    "\n💥[You're missing: " +
+                    (itemsList.includes('5021;6') ? `${valueDiffKey}]💥` : `${valueDiffRef} ref]💥`);
             }
             if (meta.uniqueReasons.includes('🟫DUPED_ITEMS')) {
                 note = process.env.DUPE_ITEMS_NOTE
@@ -1061,13 +1062,13 @@ export = class MyHandler extends Handler {
                     '\n\nYour offer summary:\n' +
                     offer
                         .summarize(this.bot.schema)
-                        .replace('Asked', '  My side')
-                        .replace('Offered', 'Your side') +
+                        .replace('Asked', '🤖  My side')
+                        .replace('Offered', '🧐Your side') +
                     (meta.uniqueReasons.includes('🟥INVALID_VALUE') && !meta.uniqueReasons.includes('🟨INVALID_ITEMS')
                         ? missingPureNote
                         : '') +
                     (process.env.DISABLE_REVIEW_OFFER_NOTE === 'false'
-                        ? `\n\nNote:\n${reviewReasons.join('\n')}`
+                        ? `\n\n📝Note📝\n${reviewReasons.join('\n')}`
                         : '') +
                     (process.env.ADDITIONAL_NOTE
                         ? '\n\n' +
@@ -1588,19 +1589,14 @@ Autokeys status:-
     }
 
     private keepMetalSupply(): void {
-        if (process.env.DISABLE_CRAFTING === 'true') {
-            return;
-        }
         const currencies = this.bot.inventoryManager.getInventory().getCurrencies();
 
         // let refined = currencies['5002;6'].length;
         let reclaimed = currencies['5001;6'].length;
         let scrap = currencies['5000;6'].length;
 
-        // const maxRefined = this.maximumRefined;
         const maxReclaimed = this.minimumReclaimed + this.combineThreshold;
         const maxScrap = this.minimumScrap + this.combineThreshold;
-        // const minRefined = this.minimumRefined;
         const minReclaimed = this.minimumReclaimed;
         const minScrap = this.minimumScrap;
 
@@ -1727,9 +1723,9 @@ Autokeys status:-
                         steamID,
                         process.env.CUSTOM_WELCOME_MESSAGE
                             ? process.env.CUSTOM_WELCOME_MESSAGE
-                            : `Hi! If you don't know how things work, please type "!` +
+                            : `🙋🏻‍♀️ Hi! If you don't know how things work, please type "!` +
                                   (isAdmin ? 'help' : 'how2trade') +
-                                  '"'
+                                  '" 🤗'
                     );
                     return;
                 }
@@ -1749,9 +1745,9 @@ Autokeys status:-
                 steamID,
                 process.env.CUSTOM_WELCOME_MESSAGE
                     ? process.env.CUSTOM_WELCOME_MESSAGE
-                    : `Hi ${friend.player_name}! If you don't know how things work, please type "!` +
+                    : `🙋🏻‍♀️ Hi ${friend.player_name}! If you don't know how things work, please type "!` +
                           (isAdmin ? 'help' : 'how2trade') +
-                          '"'
+                          '" 🤗'
             );
         });
     }
@@ -1802,7 +1798,7 @@ Autokeys status:-
                     element.steamID,
                     process.env.CUSTOM_CLEARING_FRIENDS_MESSAGE
                         ? process.env.CUSTOM_CLEARING_FRIENDS_MESSAGE
-                        : '/quote I am cleaning up my friend list and you have been selected to be removed. Feel free to add me again if you want to trade at the other time!'
+                        : '/quote I am cleaning up my friend list and you have been selected to be removed.🙇🏻‍♂️ Feel free to add me again if you want to trade at the other time! 🤗'
                 );
                 this.bot.client.removeFriend(element.steamID);
             });
@@ -1903,6 +1899,6 @@ Autokeys status:-
 
     onTF2QueueCompleted(): void {
         log.debug('Queue finished');
-        this.bot.client.gamesPlayed(['tf2-automatic', 440]);
+        this.bot.client.gamesPlayed(['tf2-automatic', 440], true);
     }
 };

@@ -3,6 +3,7 @@ import moment from 'moment';
 import SKU from 'tf2-sku';
 import TradeOfferManager, { TradeOffer } from 'steam-tradeoffer-manager';
 import pluralize from 'pluralize';
+import { XMLHttpRequest } from 'xmlhttprequest-ts';
 
 import Bot from './Bot';
 import { UnknownDictionary } from '../types/common';
@@ -292,20 +293,51 @@ abstract class Cart {
                 if (error.cause === 'TradeBan') {
                     return Promise.reject('You are trade banned');
                 } else if (error.cause === 'ItemServerUnavailable') {
-                    return Promise.reject(
-                        "Team Fortress 2's item server may be down or Steam may be experiencing temporary connectivity issues"
-                    );
+                    const msg =
+                        "Team Fortress 2's item server may be down or Steam may be experiencing temporary connectivity issues";
+                    if (process.env.DISABLE_SOMETHING_WRONG_ALERT === 'false') {
+                        if (
+                            process.env.DISABLE_DISCORD_WEBHOOK_SOMETHING_WRONG_ALERT === 'false' &&
+                            process.env.DISCORD_WEBHOOK_SOMETHING_WRONG_ALERT_URL
+                        ) {
+                            this.sendWebhookSomethingWrongAlert(msg);
+                        } else {
+                            this.bot.messageAdmins(msg, []);
+                        }
+                    }
+                    return Promise.reject(msg);
                 } else if (error.message.includes('can only be sent to friends')) {
                     // Just adding it here so that it is saved for future reference
                     return Promise.reject(error);
-                } else if (
-                    error.message.includes('maximum number of items allowed in your Team Fortress 2 inventory')
-                ) {
-                    return Promise.reject("I don't have space for more items in my inventory");
-                } else if (error.eresult == 10 || error.eresult == 16) {
+                } else if (error.message.indexOf('maximum number of items allowed in your Team Fortress 2 inventory')) {
+                    const msg = "I don't have space for more items in my inventory, please take a look.";
+                    if (process.env.DISABLE_SOMETHING_WRONG_ALERT === 'false') {
+                        if (
+                            process.env.DISABLE_DISCORD_WEBHOOK_SOMETHING_WRONG_ALERT === 'false' &&
+                            process.env.DISCORD_WEBHOOK_SOMETHING_WRONG_ALERT_URL
+                        ) {
+                            this.sendWebhookSomethingWrongAlert(msg);
+                        } else {
+                            this.bot.messageAdmins(msg, []);
+                        }
+                    }
                     return Promise.reject(
-                        "An error occurred while sending your trade offer, this is most likely because I've recently accepted a big offer"
+                        "I don't have space for more items in my inventory or Steam actually sick. You can try send that command again"
                     );
+                } else if (error.eresult == 10 || error.eresult == 16) {
+                    const msg =
+                        "An error occurred while sending your trade offer, this is most likely because I've recently accepted a big offer. Please wait like 1 minute and send that command again";
+                    if (process.env.DISABLE_SOMETHING_WRONG_ALERT === 'false') {
+                        if (
+                            process.env.DISABLE_DISCORD_WEBHOOK_SOMETHING_WRONG_ALERT === 'false' &&
+                            process.env.DISCORD_WEBHOOK_SOMETHING_WRONG_ALERT_URL
+                        ) {
+                            this.sendWebhookSomethingWrongAlert(msg);
+                        } else {
+                            this.bot.messageAdmins(msg, []);
+                        }
+                    }
+                    return Promise.reject(msg);
                 } else if (error.eresult == 15) {
                     const msg = "I don't, or the trade partner don't, have space for more items. Please take a look.";
                     if (process.env.DISABLE_SOMETHING_WRONG_ALERT === 'false') {
@@ -320,13 +352,34 @@ abstract class Cart {
                     }
                     return Promise.reject("I don't, or you don't, have space for more items");
                 } else if (error.eresult == 20) {
-                    return Promise.reject(
-                        "Team Fortress 2's item server may be down or Steam may be experiencing temporary connectivity issues"
-                    );
+                    const msg =
+                        "Team Fortress 2's item server may be down or Steam may be experiencing temporary connectivity issues";
+                    if (process.env.DISABLE_SOMETHING_WRONG_ALERT === 'false') {
+                        if (
+                            process.env.DISABLE_DISCORD_WEBHOOK_SOMETHING_WRONG_ALERT === 'false' &&
+                            process.env.DISCORD_WEBHOOK_SOMETHING_WRONG_ALERT_URL
+                        ) {
+                            this.sendWebhookSomethingWrongAlert(msg);
+                        } else {
+                            this.bot.messageAdmins(msg, []);
+                        }
+                    }
+                    return Promise.reject(msg);
                 } else if (error.eresult !== undefined) {
-                    return Promise.reject(
-                        `An error occurred while sending the offer (${TradeOfferManager.EResult[error.eresult]})`
-                    );
+                    const msg = `An error occurred while sending the offer (${
+                        TradeOfferManager.EResult[error.eresult]
+                    })`;
+                    if (process.env.DISABLE_SOMETHING_WRONG_ALERT === 'false') {
+                        if (
+                            process.env.DISABLE_DISCORD_WEBHOOK_SOMETHING_WRONG_ALERT === 'false' &&
+                            process.env.DISCORD_WEBHOOK_SOMETHING_WRONG_ALERT_URL
+                        ) {
+                            this.sendWebhookSomethingWrongAlert(msg);
+                        } else {
+                            this.bot.messageAdmins(msg, []);
+                        }
+                    }
+                    return Promise.reject(msg);
                 }
 
                 return Promise.reject(err);
@@ -356,9 +409,9 @@ abstract class Cart {
             return '❌ Your cart is empty.';
         }
 
-        let str = '🛒== YOUR CART ==🛒';
+        let str = '🛒 == YOUR CART == 🛒';
 
-        str += '\n\nMy side (items you will receive):';
+        str += '\n\n📥 My side (items you will receive): 📥';
         for (const sku in this.our) {
             if (!Object.prototype.hasOwnProperty.call(this.our, sku)) {
                 continue;
@@ -368,7 +421,7 @@ abstract class Cart {
             str += `\n- ${this.our[sku]}x ${name}`;
         }
 
-        str += '\n\nYour side (items you will lose):';
+        str += '\n\n📤 Your side (items you will lose): 📤';
         for (const sku in this.their) {
             if (!Object.prototype.hasOwnProperty.call(this.their, sku)) {
                 continue;

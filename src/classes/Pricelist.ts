@@ -435,7 +435,7 @@ export default class Pricelist extends EventEmitter {
             match.sell = new Currencies(data.sell);
             match.time = data.time;
 
-            const itemName = this.schema.getName(SKU.fromString(match.sku), false);
+            const name = this.schema.getName(SKU.fromString(match.sku), false);
 
             this.priceChanged(match.sku, match);
 
@@ -443,7 +443,7 @@ export default class Pricelist extends EventEmitter {
                 process.env.DISABLE_DISCORD_WEBHOOK_PRICE_UPDATE === 'false' &&
                 process.env.DISCORD_WEBHOOK_PRICE_UPDATE_URL
             ) {
-                this.sendWebHookPriceUpdate(itemName, match.buy.toString(), match.sell.toString(), data.sku);
+                this.sendWebHookPriceUpdate(name, match.buy.toString(), match.sell.toString(), data.sku);
             }
         }
     }
@@ -457,10 +457,6 @@ export default class Pricelist extends EventEmitter {
         const request = new XMLHttpRequest();
         request.open('POST', process.env.DISCORD_WEBHOOK_PRICE_UPDATE_URL);
         request.setRequestHeader('Content-type', 'application/json');
-
-        const time = moment()
-            .tz(process.env.TIMEZONE ? process.env.TIMEZONE : 'UTC') //timezone format: https://en.wikipedia.org/wiki/List_of_tz_database_time_zones
-            .format(process.env.CUSTOM_TIME_FORMAT ? process.env.CUSTOM_TIME_FORMAT : 'MMMM Do YYYY, HH:mm:ss ZZ'); // refer: https://www.tutorialspoint.com/momentjs/momentjs_format.htm
 
         const parts = sku.split(';');
         const newSku = parts[0] + ';6';
@@ -617,12 +613,12 @@ export default class Pricelist extends EventEmitter {
                 {
                     author: {
                         name: itemName,
-                        url: `https://www.prices.tf/items/${sku}`,
+                        url: 'https://www.prices.tf/items/' + sku,
                         icon_url:
                             'https://steamcdn-a.akamaihd.net/steamcommunity/public/images/avatars/3d/3dba19679c4a689b9d24fa300856cbf3d948d631_full.jpg'
                     },
                     footer: {
-                        text: `Item's SKU: ${sku} • ${time}`
+                        text: `Item's SKU: ${sku} • ${moment.utc().format()}`
                     },
                     thumbnail: {
                         url: itemImageUrlPrint

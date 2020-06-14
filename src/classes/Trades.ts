@@ -466,6 +466,8 @@ export = class Trades {
         return new Promise((resolve, reject) => {
             offer.accept((err, status) => {
                 attempts++;
+                log.debug(`Attempt ${attempts}/5 to accept offer #${offer.id}.`);
+                this.sleep(5000);
 
                 if (err) {
                     // @ts-ignore
@@ -553,6 +555,8 @@ export = class Trades {
         return new Promise((resolve, reject) => {
             offer.send((err, status) => {
                 attempts++;
+                log.debug(`Attempt ${attempts}/5 to send offer #${offer.id}.`);
+                this.sleep(3000);
 
                 if (err) {
                     if (
@@ -651,6 +655,14 @@ export = class Trades {
                 resolve(status);
             });
         });
+    }
+
+    private sleep(mili: number): void {
+        const date = moment().valueOf();
+        let currentDate = null;
+        do {
+            currentDate = moment().valueOf();
+        } while (currentDate - date < mili);
     }
 
     checkEscrow(offer: TradeOfferManager.TradeOffer): Promise<boolean> {

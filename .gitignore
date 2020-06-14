@@ -78,4 +78,4 @@ logs/
 # ignore compiled code
 dist/
 
-.vscode
+backup/

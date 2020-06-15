@@ -488,7 +488,7 @@ export = class Commands {
 
         const isBuyingKeys = (currReftoScrap > userMaxReftoScrap && currKeys < userMaxKeys) !== false;
         const isSellingKeys = (currReftoScrap < userMinReftoScrap && currKeys > userMinKeys) !== false;
-        const enableKeyBanking = process.env.ENABLE_AUTO_BANKING !== 'false';
+        const enableKeyBanking = process.env.ENABLE_AUTO_BANKING === 'true';
         const isBankingKeys =
             (currReftoScrap > userMinReftoScrap && currReftoScrap < userMaxReftoScrap && currKeys > userMinKeys) !==
             false;
@@ -804,7 +804,7 @@ export = class Commands {
                     (position !== 1 ? 'are' : 'is') +
                     ` ${position} infront of you. 🚶🏻‍♂️🚶🏻‍♀️`
             );
-            if (position >= 2 && process.env.DISABLE_SOMETHING_WRONG_ALERT === 'false') {
+            if (position >= 2 && process.env.DISABLE_SOMETHING_WRONG_ALERT !== 'true') {
                 if (
                     process.env.DISABLE_DISCORD_WEBHOOK_SOMETHING_WRONG_ALERT === 'false' &&
                     process.env.DISCORD_WEBHOOK_SOMETHING_WRONG_ALERT_URL

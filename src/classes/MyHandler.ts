@@ -139,6 +139,26 @@ export = class MyHandler extends Handler {
         return this.minimumKeysDupeCheck;
     }
 
+    getAutokeysEnabled(): boolean {
+        return this.autokeysEnabled;
+    }
+
+    getAutokeysStatus(): boolean {
+        return this.checkAutokeysStatus;
+    }
+
+    getAutokeysBuyingStatus(): boolean {
+        return this.isBuyingKeys;
+    }
+
+    getAutokeysBankingEnabled(): boolean {
+        return this.keyBankingEnabled;
+    }
+
+    getAutokeysBankingStatus(): boolean {
+        return this.isBankingKeys;
+    }
+
     onRun(): Promise<{
         loginAttempts?: number[];
         pricelist?: EntryData[];
@@ -852,6 +872,7 @@ export = class MyHandler extends Handler {
                 const pureStock = this.pureStock();
                 const timeWithEmojis = this.timeWithEmoji();
                 const links = this.tradePartnerLinks(offer.partner.toString());
+                const itemsList = this.itemList(offer);
 
                 const keyPrice = this.bot.pricelist.getKeyPrices();
                 const value = this.valueDiff(offer, keyPrice);
@@ -870,6 +891,7 @@ export = class MyHandler extends Handler {
                         pureStock,
                         keyPrice,
                         value,
+                        itemsList,
                         links,
                         timeWithEmojis.time
                     );
@@ -1747,12 +1769,12 @@ Autokeys status:-
         }
 
         const our: string[] = [];
-        for (const sku in items.their) {
+        for (const sku in items.our) {
             if (!Object.prototype.hasOwnProperty.call(items.our, sku)) {
                 continue;
             }
-            const theirItemsSku = sku;
-            our.push(theirItemsSku);
+            const ourItemsSku = sku;
+            our.push(ourItemsSku);
         }
         return { their, our };
     }

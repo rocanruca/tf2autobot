@@ -244,23 +244,17 @@ export = class DiscordWebhook {
             });
         });
 
-        log.debug('isMentionOurItems: ' + isMentionOurItems);
-
         const isMentionThierItems = this.skuToMention.some((fromEnv: string) => {
             return theirItems.some((theirItemSKU: string) => {
                 return theirItemSKU.includes(fromEnv);
             });
         });
 
-        log.debug('isMentionThierItems: ' + isMentionThierItems);
-
         const mentionOwner =
             this.enableMentionOwner === true && (isMentionOurItems || isMentionThierItems) ? `<@!${this.ownerID}>` : '';
         const botName = this.botName;
         const botAvatarURL = this.botAvatarURL;
         const botEmbedColor = this.botEmbedColor;
-
-        log.debug('mentionOwner: ' + (mentionOwner === '' ? 'No response' : mentionOwner));
 
         let tradesTotal = 0;
         const offerData = this.bot.manager.pollData.offerData;

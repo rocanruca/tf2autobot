@@ -420,7 +420,7 @@ export = class Commands {
 
         const pure = (this.bot.handler as MyHandler).currPure();
         const currKey = pure.key;
-        const currRef = Currencies.toScrap(pure.refTotalInScrap);
+        const currRef = pure.refTotalInScrap;
 
         const user = (this.bot.handler as MyHandler).getUserAutokeysSettings();
 

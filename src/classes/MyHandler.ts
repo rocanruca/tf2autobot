@@ -715,6 +715,8 @@ export = class MyHandler extends Handler {
             if (this.autokeysEnabled !== false) {
                 if (this.autoRelistNotSellingKeys > 4 || this.autoRelistNotBuyingKeys > 4) {
                     this.bot.listings.checkAllWithDelay();
+                    this.autoRelistNotSellingKeys = 0;
+                    this.autoRelistNotBuyingKeys = 0;
                 }
             } else {
                 this.autoRelistNotSellingKeys = 0;

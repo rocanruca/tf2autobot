@@ -499,7 +499,29 @@ export = class MyHandler extends Handler {
             return { action: 'accept', reason: 'GIFT' };
         } else if (offer.itemsToReceive.length === 0 || offer.itemsToGive.length === 0) {
             offer.log('info', 'is a gift offer, declining...');
-            return { action: 'decline', reason: 'GIFT' };
+            return { action: 'decline', reason: 'GIFT_NO_NOTE' };
+        }
+
+        let hasNot5Uses = false;
+        offer.itemsToReceive.forEach(item => {
+            if (item.name === 'Dueling Mini-Game') {
+                for (let i = 0; item.descriptions.length; i++) {
+                    const descriptionValue = item.descriptions[i].value;
+                    const descriptionColor = item.descriptions[i].color;
+
+                    if (descriptionValue.includes('This is a limited use item.') && descriptionColor === '00a000') {
+                        if (!descriptionValue.includes('Uses: 5')) {
+                            hasNot5Uses = true;
+                            offer.log('info', 'contains Dueling Mini-Game that is not 5 uses, declining...');
+                            break;
+                        }
+                    }
+                }
+            }
+        });
+
+        if (hasNot5Uses) {
+            return { action: 'decline', reason: 'DUELING_NOT_5_USES' };
         }
 
         const manualReviewEnabled = process.env.ENABLE_MANUAL_REVIEW !== 'false';
@@ -941,11 +963,20 @@ export = class MyHandler extends Handler {
                             : '/pre ✅ Success! The offer went through successfully.'
                     );
                 } else if (offer.state === TradeOfferManager.ETradeOfferState.Declined) {
+                    const offerReason: { reason: string } = offer.data('action');
+                    let reason: string;
+                    if (offerReason.reason === 'GIFT_NO_NOTE') {
+                        reason = `the offer you've sent is an empty offer on my side without any offer message. If you wish to give it as a gift, please include "gift" in the offer message. Thank you.`;
+                    } else if (offerReason.reason === 'DUELING_NOT_5_USES') {
+                        reason = 'your offer contains Dueling Mini-Game that are not 5 uses.';
+                    }
                     this.bot.sendMessage(
                         offer.partner,
                         process.env.CUSTOM_DECLINED_MESSAGE
                             ? process.env.CUSTOM_DECLINED_MESSAGE
-                            : '/pre ❌ Ohh nooooes! The offer is no longer available. Reason: The offer has been declined.'
+                            : `/pre ❌ Ohh nooooes! The offer is no longer available. Reason: The offer has been declined ${
+                                  reason ? `because ${reason}` : '.'
+                              }`
                     );
                 } else if (offer.state === TradeOfferManager.ETradeOfferState.Canceled) {
                     let reason: string;
@@ -1095,8 +1126,9 @@ export = class MyHandler extends Handler {
             const overstockedItemsName: string[] = [];
             const dupedItemsName: string[] = [];
             const dupedFailedItemsName: string[] = [];
+            const reasons = meta.uniqueReasons;
 
-            if (meta.uniqueReasons.includes('🟨INVALID_ITEMS')) {
+            if (reasons.includes('🟨INVALID_ITEMS')) {
                 this.invalidItemsSKU.forEach(sku => {
                     const name = this.bot.schema.getName(SKU.fromString(sku), false);
                     invalidItemsName.push(name);
@@ -1116,7 +1148,7 @@ export = class MyHandler extends Handler {
                 reviewReasons.push(note);
             }
 
-            if (meta.uniqueReasons.includes('🟦OVERSTOCKED')) {
+            if (reasons.includes('🟦OVERSTOCKED')) {
                 this.overstockedItemsSKU.forEach(sku => {
                     const name = this.bot.schema.getName(SKU.fromString(sku), false);
                     overstockedItemsName.push(name);
@@ -1136,17 +1168,7 @@ export = class MyHandler extends Handler {
                 reviewReasons.push(note);
             }
 
-            if (meta.uniqueReasons.includes('🟥INVALID_VALUE')) {
-                note = process.env.INVALID_VALUE_NOTE
-                    ? `🟥INVALID_VALUE - ${process.env.INVALID_VALUE_NOTE}`
-                    : '🟥INVALID_VALUE - Your offer will be ignored. Please cancel it and make another offer with correct value.';
-                reviewReasons.push(note);
-                missingPureNote =
-                    "\n[You're missing: " +
-                    (itemsList.their.includes('5021;6') ? `${value.diffKey}]` : `${value.diffRef} ref]`);
-            }
-
-            if (meta.uniqueReasons.includes('🟫DUPED_ITEMS')) {
+            if (reasons.includes('🟫DUPED_ITEMS')) {
                 this.dupedItemsSKU.forEach(sku => {
                     const name = this.bot.schema.getName(SKU.fromString(sku), false);
                     dupedItemsName.push(name);
@@ -1166,7 +1188,7 @@ export = class MyHandler extends Handler {
                 reviewReasons.push(note);
             }
 
-            if (meta.uniqueReasons.includes('🟪DUPE_CHECK_FAILED')) {
+            if (reasons.includes('🟪DUPE_CHECK_FAILED')) {
                 this.dupedFailedItemsSKU.forEach(sku => {
                     const name = this.bot.schema.getName(SKU.fromString(sku), false);
                     dupedFailedItemsName.push(name);
@@ -1185,19 +1207,47 @@ export = class MyHandler extends Handler {
                       );
                 reviewReasons.push(note);
             }
+
+            if (
+                reasons.includes('🟥INVALID_VALUE') &&
+                !(
+                    reasons.includes('🟨INVALID_ITEMS') ||
+                    reasons.includes('🟦OVERSTOCKED') ||
+                    reasons.includes('🟫DUPED_ITEMS') ||
+                    reasons.includes('🟪DUPE_CHECK_FAILED')
+                )
+            ) {
+                note = process.env.INVALID_VALUE_NOTE
+                    ? `🟥INVALID_VALUE - ${process.env.INVALID_VALUE_NOTE}`
+                    : '🟥INVALID_VALUE - Your offer will be ignored. Please cancel it and make another offer with correct value.';
+                reviewReasons.push(note);
+                missingPureNote =
+                    "\n[You're missing: " +
+                    (itemsList.their.includes('5021;6') ? `${value.diffKey}]` : `${value.diffRef} ref]`);
+            }
             // Notify partner and admin that the offer is waiting for manual review
             this.bot.sendMessage(
                 offer.partner,
-                `/pre ⚠️ Your offer is waiting for review.\nReason: ${meta.uniqueReasons.join(', ')}` +
-                    '\n\nYour offer summary:\n' +
-                    offer
-                        .summarize(this.bot.schema)
-                        .replace('Asked', '  My side')
-                        .replace('Offered', 'Your side') +
-                    (meta.uniqueReasons.includes('🟥INVALID_VALUE') && !meta.uniqueReasons.includes('🟨INVALID_ITEMS')
-                        ? missingPureNote
+                `/pre ⚠️ Your offer is waiting for review.\nReason: ${reasons.join(', ')}` +
+                    (process.env.DISABLE_SHOW_REVIEW_OFFER_SUMMARY !== 'true'
+                        ? '\n\nYour offer summary:\n' +
+                          offer
+                              .summarize(this.bot.schema)
+                              .replace('Asked', '  My side')
+                              .replace('Offered', 'Your side') +
+                          (reasons.includes('🟥INVALID_VALUE') &&
+                          !(
+                              reasons.includes('🟨INVALID_ITEMS') ||
+                              reasons.includes('🟦OVERSTOCKED') ||
+                              reasons.includes('🟫DUPED_ITEMS') ||
+                              reasons.includes('🟪DUPE_CHECK_FAILED')
+                          )
+                              ? missingPureNote
+                              : '') +
+                          (process.env.DISABLE_REVIEW_OFFER_NOTE !== 'true'
+                              ? `\n\nNote:\n${reviewReasons.join('\n')}`
+                              : '')
                         : '') +
-                    (process.env.DISABLE_REVIEW_OFFER_NOTE !== 'true' ? `\n\nNote:\n${reviewReasons.join('\n')}` : '') +
                     (process.env.ADDITIONAL_NOTE
                         ? '\n\n' +
                           process.env.ADDITIONAL_NOTE.replace(
@@ -1216,7 +1266,7 @@ export = class MyHandler extends Handler {
             ) {
                 this.discord.sendOfferReview(
                     offer,
-                    meta.uniqueReasons.join(', '),
+                    reasons.join(', '),
                     pureStock,
                     timeWithEmojis.time,
                     offer.summarizeWithLink(this.bot.schema),
@@ -1302,7 +1352,7 @@ export = class MyHandler extends Handler {
 
         if (isNaN(userMinKeys) || isNaN(userMinReftoScrap) || isNaN(userMaxReftoScrap)) {
             log.warn(
-                "You've entered a non-number on either your MINIMUM_KEYS/MINIMUM_REFINED/MAXIMUM_REFINED variables, please correct it. Autosell/buy keys is disabled until you correct it."
+                "You've entered a non-number on either your MINIMUM_KEYS/MINIMUM_REFINED/MAXIMUM_REFINED variables, please correct it. Autokeys is disabled until you correct it."
             );
             return;
         }
@@ -1405,7 +1455,15 @@ Autokeys status:-
                 currReftoScrap
             )}) < MaxRef(${Currencies.toRefined(userMaxReftoScrap)})
     Key: MinKeys(${userMinKeys}) ≤ CurrKeys(${currKeys}) ≤ MaxKeys(${userMaxKeys})
- Status: ${isBuyingKeys ? 'Buying' : isSellingKeys ? 'Selling' : isBankingKeys ? 'Banking' : 'Not active'}`
+ Status: ${
+     isBankingKeys && isEnableKeyBanking
+         ? 'Banking'
+         : isBuyingKeys
+         ? 'Buying'
+         : isSellingKeys
+         ? 'Selling'
+         : 'Not active'
+ }`
         );
 
         const isAlreadyRunningAutokeys = this.checkAutokeysStatus !== false;

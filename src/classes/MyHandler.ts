@@ -363,10 +363,10 @@ export = class MyHandler extends Handler {
     onGroupRelationship(groupID: SteamID, relationship: number): void {
         log.debug('Group relation changed', { steamID: groupID, relationship: relationship });
         if (relationship === SteamUser.EClanRelationship.Invited) {
-            const join = !this.groups.includes(groupID.getSteamID64());
+            const join = this.groups.includes(groupID.getSteamID64());
 
             log.info(`Got invited to group ${groupID.getSteamID64()}, ${join ? 'accepting...' : 'declining...'}`);
-            this.bot.client.respondToGroupInvite(groupID, !this.groups.includes(groupID.getSteamID64()));
+            this.bot.client.respondToGroupInvite(groupID, join);
         } else if (relationship === SteamUser.EClanRelationship.Member) {
             log.info(`Joined group ${groupID.getSteamID64()}`);
         }
@@ -505,22 +505,24 @@ export = class MyHandler extends Handler {
         let hasNot5Uses = false;
         offer.itemsToReceive.forEach(item => {
             if (item.name === 'Dueling Mini-Game') {
-                for (let i = 0; item.descriptions.length; i++) {
+                for (let i = 0; i < item.descriptions.length; i++) {
                     const descriptionValue = item.descriptions[i].value;
                     const descriptionColor = item.descriptions[i].color;
 
-                    if (descriptionValue.includes('This is a limited use item.') && descriptionColor === '00a000') {
-                        if (!descriptionValue.includes('Uses: 5')) {
-                            hasNot5Uses = true;
-                            offer.log('info', 'contains Dueling Mini-Game that is not 5 uses, declining...');
-                            break;
-                        }
+                    if (
+                        !descriptionValue.includes('This is a limited use item. Uses: 5') &&
+                        descriptionColor === '00a000'
+                    ) {
+                        hasNot5Uses = true;
+                        log.debug('info', `Dueling Mini-Game (${item.assetid}) is not 5 uses.`);
+                        break;
                     }
                 }
             }
         });
 
-        if (hasNot5Uses) {
+        if (hasNot5Uses && this.bot.pricelist.getPrice('241;6', true) !== null) {
+            offer.log('info', 'contains Dueling Mini-Game that is not 5 uses.');
             return { action: 'decline', reason: 'DUELING_NOT_5_USES' };
         }
 
@@ -603,6 +605,10 @@ export = class MyHandler extends Handler {
                     exchange[which].scrap += value;
                 } else {
                     const match = this.bot.pricelist.getPrice(sku, true);
+                    const notIncludeCraftweapon =
+                        process.env.DISABLE_CRAFTWEAPON_AS_CURRENCY !== 'true'
+                            ? !weaponSku.includes(sku) && match === null
+                            : true;
 
                     // TODO: Go through all assetids and check if the item is being sold for a specific price
 
@@ -625,7 +631,7 @@ export = class MyHandler extends Handler {
                         const buyingOverstockCheck = diff > 0;
                         const amountCanTrade = this.bot.inventoryManager.amountCanTrade(sku, buyingOverstockCheck);
 
-                        if (diff !== 0 && amountCanTrade < diff && !weaponSku.includes(sku)) {
+                        if (diff !== 0 && amountCanTrade < diff && notIncludeCraftweapon) {
                             // User is taking too many / offering too many
                             hasOverstock = true;
 
@@ -656,7 +662,7 @@ export = class MyHandler extends Handler {
                         // Offer contains keys and we are not trading keys, add key value
                         exchange[which].value += keyPrice.toValue() * amount;
                         exchange[which].keys += amount;
-                    } else if ((match === null && !weaponSku.includes(sku)) || match.intent === (buying ? 1 : 0)) {
+                    } else if ((match === null && notIncludeCraftweapon) || match.intent === (buying ? 1 : 0)) {
                         // Offer contains an item that we are not trading
                         hasInvalidItems = true;
 
@@ -974,8 +980,8 @@ export = class MyHandler extends Handler {
                         offer.partner,
                         process.env.CUSTOM_DECLINED_MESSAGE
                             ? process.env.CUSTOM_DECLINED_MESSAGE
-                            : `/pre ❌ Ohh nooooes! The offer is no longer available. Reason: The offer has been declined ${
-                                  reason ? `because ${reason}` : '.'
+                            : `/pre ❌ Ohh nooooes! The offer is no longer available. Reason: The offer has been declined${
+                                  reason ? ` because ${reason}` : '.'
                               }`
                     );
                 } else if (offer.state === TradeOfferManager.ETradeOfferState.Canceled) {
@@ -2158,21 +2164,24 @@ Autokeys status:-
         return pureStock;
     }
 
-    currPure(): { key: number; scrap: number; rec: number; ref: number; refTotalInScrap: number } {
+    currPure(): { key: number; scrap: number; rec: number; ref: number; refTotalInScrap: number; totalPure: number } {
         const currencies = this.bot.inventoryManager.getInventory().getCurrencies();
+        const keyPrice = this.bot.pricelist.getKeyPrice();
 
         const currKeys = currencies['5021;6'].length;
         const currScrap = currencies['5000;6'].length * (1 / 9);
         const currRec = currencies['5001;6'].length * (1 / 3);
         const currRef = currencies['5002;6'].length;
         const currReftoScrap = Currencies.toScrap(currRef + currRec + currScrap);
+        const currPure = Currencies.toScrap(currReftoScrap + currKeys * keyPrice.metal);
 
         const pure = {
             key: currKeys,
             scrap: currScrap,
             rec: currRec,
             ref: currRef,
-            refTotalInScrap: currReftoScrap
+            refTotalInScrap: currReftoScrap,
+            totalPure: currPure
         };
         return pure;
     }

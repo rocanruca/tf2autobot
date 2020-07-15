@@ -183,6 +183,10 @@ export = class MyHandler extends Handler {
         }, 1000);
     }
 
+    getFriendToKeep(): number {
+        return this.friendsToKeep.length;
+    }
+
     hasDupeCheckEnabled(): boolean {
         return this.dupeCheckEnabled;
     }
@@ -971,7 +975,9 @@ export = class MyHandler extends Handler {
                 } else if (offer.state === TradeOfferManager.ETradeOfferState.Declined) {
                     const offerReason: { reason: string } = offer.data('action');
                     let reason: string;
-                    if (offerReason.reason === 'GIFT_NO_NOTE') {
+                    if (!offerReason) {
+                        reason = '';
+                    } else if (offerReason.reason === 'GIFT_NO_NOTE') {
                         reason = `the offer you've sent is an empty offer on my side without any offer message. If you wish to give it as a gift, please include "gift" in the offer message. Thank you.`;
                     } else if (offerReason.reason === 'DUELING_NOT_5_USES') {
                         reason = 'your offer contains Dueling Mini-Game that are not 5 uses.';
@@ -1072,7 +1078,7 @@ export = class MyHandler extends Handler {
                                           : '🛑')
                                     : ''
                             }
-                        💰 Pure stock: ${pureStock.join(', ').toString()} ref`,
+                        💰 Pure stock: ${pureStock.join(', ').toString()}`,
                         []
                     );
                 }
@@ -1315,7 +1321,7 @@ export = class MyHandler extends Handler {
                     SteamREP: ${links.steamREP}
 
                     🔑 Key rate: ${keyPrice.buy.metal.toString()}/${keyPrice.sell.metal.toString()} ref
-                    💰 Pure stock: ${pureStock.join(', ').toString()} ref`,
+                    💰 Pure stock: ${pureStock.join(', ').toString()}`,
                     []
                 );
             }
@@ -1382,9 +1388,9 @@ export = class MyHandler extends Handler {
                     (currKeys >= userMinKeys && currKeys <= userMaxKeys) ||
                     currKeys >= userMaxKeys)) !== false;
         /*
-        //        <·····●····························●·····> (OR) \
+        //        <·····●····························●·····>      \
         // Keys --------|----------------------------|---------->  ⟩ AND
-        //              ●————————————————————————————●      (AND) /
+        //              ●————————————————————————————●·····>      /
         // Refs --------|----------------------------|---------->
         //             min                          max
         */
@@ -1404,6 +1410,19 @@ export = class MyHandler extends Handler {
         //              ○———————————————————————————————————>     \
         // Keys --------|----------------------------|---------->  ⟩ AND
         //              ○————————————————————————————○            /
+        // Refs --------|----------------------------|---------->
+        //             min                          max
+        */
+
+        /**
+         * enable Autokeys - Banking - true if minRef \> currRef \< maxRef AND keys \< minKeys
+         * Will buy keys.
+         */
+        const isBankingBuyKeysWithEnoughRefs = currReftoScrap > userMinReftoScrap && currKeys <= userMinKeys !== false;
+        /*
+        //        <—————●                                         \
+        // Keys --------|----------------------------|---------->  ⟩ AND
+        //              ○———————————————————————————————————>     /
         // Refs --------|----------------------------|---------->
         //             min                          max
         */
@@ -1472,6 +1491,16 @@ Autokeys status:-
                 this.alreadyUpdatedToBuy = false;
                 this.alreadyUpdatedToSell = false;
                 this.updateAutokeysBanking(userMinKeys, userMaxKeys);
+            } else if (isBankingBuyKeysWithEnoughRefs && isEnableKeyBanking && isAlreadyUpdatedToBuy !== true) {
+                // enable keys banking - if refs > minRefs but Keys < minKeys, will buy keys.
+                this.isBuyingKeys = true;
+                this.isBankingKeys = false;
+                this.checkAutokeysStatus = true;
+                this.checkAlertOnLowPure = false;
+                this.alreadyUpdatedToBank = false;
+                this.alreadyUpdatedToBuy = true;
+                this.alreadyUpdatedToSell = false;
+                this.updateAutokeysBuy(userMinKeys, userMaxKeys);
             } else if (isBuyingKeys && isAlreadyUpdatedToBuy !== true) {
                 // enable Autokeys - Buying - if buying keys conditions matched
                 this.isBuyingKeys = true;
@@ -1547,6 +1576,16 @@ Autokeys status:-
                     this.alreadyUpdatedToBuy = false;
                     this.alreadyUpdatedToSell = false;
                     this.createAutokeysBanking(userMinKeys, userMaxKeys);
+                } else if (isBankingBuyKeysWithEnoughRefs && isEnableKeyBanking) {
+                    // enable keys banking - if refs > minRefs but Keys < minKeys, will buy keys.
+                    this.isBuyingKeys = true;
+                    this.isBankingKeys = false;
+                    this.checkAutokeysStatus = true;
+                    this.checkAlertOnLowPure = false;
+                    this.alreadyUpdatedToBank = false;
+                    this.alreadyUpdatedToBuy = false;
+                    this.alreadyUpdatedToSell = false;
+                    this.createAutokeysBuy(userMinKeys, userMaxKeys);
                 } else if (isBuyingKeys) {
                     // create new Key entry and enable Autokeys - Buying - if buying keys conditions matched
                     this.isBuyingKeys = true;
@@ -1600,6 +1639,16 @@ Autokeys status:-
                     this.alreadyUpdatedToBuy = false;
                     this.alreadyUpdatedToSell = false;
                     this.updateAutokeysBanking(userMinKeys, userMaxKeys);
+                } else if (isBankingBuyKeysWithEnoughRefs && isEnableKeyBanking && isAlreadyUpdatedToBuy !== true) {
+                    // enable keys banking - if refs > minRefs but Keys < minKeys, will buy keys.
+                    this.isBuyingKeys = true;
+                    this.isBankingKeys = false;
+                    this.checkAutokeysStatus = true;
+                    this.checkAlertOnLowPure = false;
+                    this.alreadyUpdatedToBank = false;
+                    this.alreadyUpdatedToBuy = true;
+                    this.alreadyUpdatedToSell = false;
+                    this.updateAutokeysBuy(userMinKeys, userMaxKeys);
                 } else if (isBuyingKeys && isAlreadyUpdatedToBuy !== true) {
                     // enable Autokeys - Buying - if buying keys conditions matched
                     this.isBuyingKeys = true;
@@ -1952,7 +2001,10 @@ Autokeys status:-
                     this.bot.sendMessage(
                         steamID,
                         process.env.CUSTOM_WELCOME_MESSAGE
-                            ? process.env.CUSTOM_WELCOME_MESSAGE
+                            ? process.env.CUSTOM_WELCOME_MESSAGE.replace(/%name%/g, '').replace(
+                                  /%admin%/g,
+                                  isAdmin ? '!help' : '!how2trade'
+                              )
                             : `🙋🏻‍♀️ Hi! If you don't know how things work, please type "!` +
                                   (isAdmin ? 'help' : 'how2trade') +
                                   '" 🤗'
@@ -1974,7 +2026,10 @@ Autokeys status:-
             this.bot.sendMessage(
                 steamID,
                 process.env.CUSTOM_WELCOME_MESSAGE
-                    ? process.env.CUSTOM_WELCOME_MESSAGE
+                    ? process.env.CUSTOM_WELCOME_MESSAGE.replace(/%name%/g, friend.player_name).replace(
+                          /%admin%/g,
+                          isAdmin ? '!help' : '!how2trade'
+                      )
                     : `🙋🏻‍♀️ Hi ${friend.player_name}! If you don't know how things work, please type "!` +
                           (isAdmin ? 'help' : 'how2trade') +
                           '" 🤗'
@@ -2147,19 +2202,21 @@ Autokeys status:-
     pureStock(): string[] {
         const pureStock: string[] = [];
         const pure = this.currPure();
+        const totalKeys = pure.key;
+        const totalRefs = Currencies.toRefined(pure.refTotalInScrap);
 
         const pureCombine = [
             {
-                name: 'Key',
-                amount: pure.key
+                name: pluralize('key', totalKeys),
+                amount: totalKeys
             },
             {
-                name: 'Ref',
-                amount: Currencies.toRefined(pure.refTotalInScrap)
+                name: pluralize('ref', Math.trunc(totalRefs)),
+                amount: totalRefs
             }
         ];
         for (let i = 0; i < pureCombine.length; i++) {
-            pureStock.push(`${pureCombine[i].name}: ${pureCombine[i].amount}`);
+            pureStock.push(`${pureCombine[i].amount} ${pureCombine[i].name}`);
         }
         return pureStock;
     }

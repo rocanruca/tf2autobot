@@ -1382,13 +1382,11 @@ export = class MyHandler extends Handler {
          * (currKeys ≤ minKeys OR minKeys ≤ currKeys ≤ maxKeys OR currKeys ≥ maxKeys)
          */
         const isRemoveAutoKeys =
-            (currReftoScrap >= userMinReftoScrap &&
-                currReftoScrap <= userMaxReftoScrap &&
-                (currKeys <= userMinKeys ||
-                    (currKeys >= userMinKeys && currKeys <= userMaxKeys) ||
-                    currKeys >= userMaxKeys)) !== false;
+            (currReftoScrap >= userMaxReftoScrap && currKeys >= userMaxKeys) ||
+            (currReftoScrap >= userMinReftoScrap && currReftoScrap <= userMaxReftoScrap && currKeys <= userMaxKeys) !==
+                false;
         /*
-        //        <·····●····························●·····>      \
+        //        <——————————————————————————————————●·····>      \
         // Keys --------|----------------------------|---------->  ⟩ AND
         //              ●————————————————————————————●·····>      /
         // Refs --------|----------------------------|---------->

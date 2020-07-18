@@ -91,6 +91,8 @@ export = class MyHandler extends Handler {
 
     private customGameName: string;
 
+    private hasInvalidValueException = false;
+
     recentlySentMessage: UnknownDictionary<number> = {};
 
     constructor(bot: Bot) {
@@ -877,6 +879,7 @@ export = class MyHandler extends Handler {
                 // Check if the values are correct and is not include the exception sku
                 // OR include the exception sku but the invalid value is more than or equal to exception value
                 hasInvalidValue = true;
+                this.hasInvalidValueException = false;
                 wrongAboutOffer.push({
                     reason: '🟥INVALID_VALUE',
                     our: exchange.our.value,
@@ -890,6 +893,7 @@ export = class MyHandler extends Handler {
                         exceptionValue
                     )} ref. Accepting/checking for other reasons...`
                 );
+                this.hasInvalidValueException = true;
             }
         }
 
@@ -1028,8 +1032,10 @@ export = class MyHandler extends Handler {
             const uniqueReasons = reasons.filter(reason => reasons.includes(reason));
 
             if (
-                ((uniqueReasons.includes('🟨INVALID_ITEMS') && process.env.ACCEPT_INVALID_ITEMS_OVERPAY === 'true') ||
-                    (uniqueReasons.includes('🟦OVERSTOCKED') && process.env.ACCEPT_OVERSTOCKED_OVERPAY === 'true')) &&
+                ((uniqueReasons.includes('🟨INVALID_ITEMS') &&
+                    process.env.DISABLE_ACCEPT_INVALID_ITEMS_OVERPAY !== 'true') ||
+                    (uniqueReasons.includes('🟦OVERSTOCKED') &&
+                        process.env.DISABLE_ACCEPT_OVERSTOCKED_OVERPAY !== 'true')) &&
                 !(
                     uniqueReasons.includes('🟥INVALID_VALUE') ||
                     uniqueReasons.includes('🟫DUPED_ITEMS') ||
@@ -1044,6 +1050,19 @@ export = class MyHandler extends Handler {
                     )}`
                 );
                 return { action: 'accept', reason: 'VALID' };
+            } else if (
+                // If only INVALID_VALUE and did not matched exception value, will just decline the trade.
+                process.env.DISABLE_AUTO_DECLINE_INVALID_VALUE !== 'true' &&
+                uniqueReasons.includes('🟥INVALID_VALUE') &&
+                !(
+                    uniqueReasons.includes('🟨INVALID_ITEMS') ||
+                    uniqueReasons.includes('🟦OVERSTOCKED') ||
+                    uniqueReasons.includes('🟫DUPED_ITEMS') ||
+                    uniqueReasons.includes('🟪DUPE_CHECK_FAILED')
+                ) &&
+                this.hasInvalidValueException === false
+            ) {
+                return { action: 'decline', reason: 'ONLY_INVALID_VALUE' };
             } else {
                 offer.log('info', `offer needs review (${uniqueReasons.join(', ')}), skipping...`);
                 return {
@@ -1084,6 +1103,10 @@ export = class MyHandler extends Handler {
                     );
                 } else if (offer.state === TradeOfferManager.ETradeOfferState.Declined) {
                     const offerReason: { reason: string } = offer.data('action');
+                    const keyPrice = this.bot.pricelist.getKeyPrices();
+                    const value = this.valueDiff(offer, keyPrice);
+                    const itemsList = this.itemList(offer);
+
                     let reason: string;
                     if (!offerReason) {
                         reason = '';
@@ -1093,6 +1116,8 @@ export = class MyHandler extends Handler {
                         reason = 'your offer contains Dueling Mini-Game that are not 5 uses.';
                     } else if (offerReason.reason === 'NOISE_MAKER_NOT_25_USES') {
                         reason = 'your offer contains Noise Maker that are not 25 uses.';
+                    } else if (offerReason.reason === 'ONLY_INVALID_VALUE') {
+                        reason = "you've sent a trade with an invalid value (your side and my side did not matched).";
                     }
                     this.bot.sendMessage(
                         offer.partner,
@@ -1100,7 +1125,18 @@ export = class MyHandler extends Handler {
                             ? process.env.CUSTOM_DECLINED_MESSAGE
                             : `/pre ❌ Ohh nooooes! The offer is no longer available. Reason: The offer has been declined${
                                   reason ? ` because ${reason}` : '.'
-                              }`
+                              }` +
+                                  (offerReason.reason === 'ONLY_INVALID_VALUE'
+                                      ? '\n\nSummary:\n' +
+                                        offer
+                                            .summarize(this.bot.schema)
+                                            .replace('Asked', '  My side')
+                                            .replace('Offered', 'Your side') +
+                                        "\n[You're missing: " +
+                                        (itemsList.their.includes('5021;6')
+                                            ? `${value.diffKey}]`
+                                            : `${value.diffRef} ref]`)
+                                      : '')
                     );
                 } else if (offer.state === TradeOfferManager.ETradeOfferState.Canceled) {
                     let reason: string;

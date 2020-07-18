@@ -31,6 +31,8 @@ const COMMANDS: string[] = [
     '!stock - Get a list of items that the bot has 📊',
     '!pure - Get current pure stock 💰',
     '!rate - Get current key prices 🔑',
+    '!craftweapon - get a list of craft weapon stock 🔫',
+    '!uncraftweapon - get a list of uncraft weapon stock 🔫',
     '!price [amount] <name> - Get the price and stock of an item 💱',
     '!message <Your Messages> - Send a message to the owner of the bot 💬',
     '!buy [amount] <name> - Instantly buy an item 📥',
@@ -60,7 +62,6 @@ const ADMIN_COMMANDS: string[] = [
     '!block <steamid> - Block a specific user ⛔',
     '!unblock <steamid> - Unblock specific user',
     '!autokeys - Get info on your current autoBuy/Sell Keys settings 🔑',
-    '!craftweapon - get a list of craft weapon stock 🔫',
     '!trades - Get a list of offers pending for manual review 🧾💱',
     '!trade <offerID> - Get info about a trade 🧐💱',
     '!accepttrade <offerID> [Your Message] - Manually accept an active offer ✅💱',
@@ -107,8 +108,10 @@ export = class Commands {
             this.timeCommand(steamID);
         } else if (command === 'autokeys' && isAdmin) {
             this.autoKeysCommand(steamID);
-        } else if (command === 'craftweapon' && isAdmin) {
+        } else if (command === 'craftweapon') {
             this.craftweaponCommand(steamID);
+        } else if (command === 'uncraftweapon') {
+            this.uncraftweaponCommand(steamID);
         } else if (command === 'message') {
             this.messageCommand(steamID, message);
         } else if (command === 'rate') {
@@ -420,6 +423,15 @@ export = class Commands {
         const crafWeaponStock = this.craftWeapons();
 
         const reply = "📃 Here's a list of all craft weapons stock in my inventory:\n\n" + crafWeaponStock.join(', \n');
+
+        this.bot.sendMessage(steamID, reply);
+    }
+
+    private uncraftweaponCommand(steamID: SteamID): void {
+        const uncrafWeaponStock = this.uncraftWeapons();
+
+        const reply =
+            "📃 Here's a list of all uncraft weapons stock in my inventory:\n\n" + uncrafWeaponStock.join(', \n');
 
         this.bot.sendMessage(steamID, reply);
     }
@@ -1587,6 +1599,22 @@ export = class Commands {
     private deleteCommand(steamID: SteamID, message: string): void {
         const params = CommandParser.parseParams(CommandParser.removeCommand(message));
 
+        if (params.assetid !== undefined) {
+            const sku = this.bot.inventoryManager.getInventory().findByAssetid(params.assetid);
+            const item = SKU.fromString(sku);
+            const name = this.bot.schema.getName(item, false);
+
+            this.bot.tf2gc.deleteItem(params.assetid, err => {
+                if (err) {
+                    log.warn(`Error trying to delete ${name}: `, err);
+                    this.bot.sendMessage(steamID, `❌ Failed to delete ${name}(${params.assetid}): ${err.message}`);
+                    return;
+                }
+                this.bot.sendMessage(steamID, `✅ Deleted ${name}(${params.assetid})!`);
+            });
+            return;
+        }
+
         if (params.name !== undefined || params.item !== undefined) {
             this.bot.sendMessage(
                 steamID,
@@ -1662,7 +1690,7 @@ export = class Commands {
         const name = this.bot.schema.getName(item, false);
 
         if (assetids.length === 0) {
-            // No backpack expanders
+            // Item not found
             this.bot.sendMessage(steamID, `❌ I couldn't find any ${pluralize(name, 0)}`);
             return;
         }
@@ -1670,11 +1698,11 @@ export = class Commands {
         this.bot.tf2gc.deleteItem(assetids[0], err => {
             if (err) {
                 log.warn(`Error trying to delete ${name}: `, err);
-                this.bot.sendMessage(steamID, `❌ Failed to delete ${name}: ${err.message}`);
+                this.bot.sendMessage(steamID, `❌ Failed to delete ${name}(${assetids[0]}): ${err.message}`);
                 return;
             }
 
-            this.bot.sendMessage(steamID, `✅ Deleted ${name}!`);
+            this.bot.sendMessage(steamID, `✅ Deleted ${name}(${assetids[0]})!`);
         });
     }
 
@@ -2503,590 +2531,69 @@ export = class Commands {
     }
 
     private craftWeapons(): string[] {
-        const craftWeaponsStock: string[] = [];
-        const craftWeapons = [
-            {
-                name: 'Ambassador',
-                amount: this.bot.inventoryManager.getInventory().getAmount('61;6')
-            },
-            {
-                name: 'B.A.S.E Jumper',
-                amount: this.bot.inventoryManager.getInventory().getAmount('1101;6')
-            },
-            {
-                name: "Battalion's Backup",
-                amount: this.bot.inventoryManager.getInventory().getAmount('226;6')
-            },
-            {
-                name: 'Bonk! Atomic Punch',
-                amount: this.bot.inventoryManager.getInventory().getAmount('46;6')
-            },
-            {
-                name: 'Buff Banner',
-                amount: this.bot.inventoryManager.getInventory().getAmount('129;6')
-            },
-            {
-                name: 'Buffalo Steak Sandvich',
-                amount: this.bot.inventoryManager.getInventory().getAmount('311;6')
-            },
-            {
-                name: "Chargin' Targe",
-                amount: this.bot.inventoryManager.getInventory().getAmount('131;6')
-            },
-            {
-                name: "Cleaner's Carbine",
-                amount: this.bot.inventoryManager.getInventory().getAmount('751;6')
-            },
-            {
-                name: 'Concheror',
-                amount: this.bot.inventoryManager.getInventory().getAmount('354;6')
-            },
-            {
-                name: 'Cozy Camper',
-                amount: this.bot.inventoryManager.getInventory().getAmount('642;6')
-            },
-            {
-                name: 'Crit-a-Cola',
-                amount: this.bot.inventoryManager.getInventory().getAmount('163;6')
-            },
-            {
-                name: 'Dalokohs Bar',
-                amount: this.bot.inventoryManager.getInventory().getAmount('159;6')
-            },
-            {
-                name: "Darwin's Danger Shield",
-                amount: this.bot.inventoryManager.getInventory().getAmount('231;6')
-            },
-            {
-                name: 'Detonator',
-                amount: this.bot.inventoryManager.getInventory().getAmount('351;6')
-            },
-            {
-                name: 'Diamondback',
-                amount: this.bot.inventoryManager.getInventory().getAmount('525;6')
-            },
-            {
-                name: 'Enforcer',
-                amount: this.bot.inventoryManager.getInventory().getAmount('460;6')
-            },
-            {
-                name: 'Family Business',
-                amount: this.bot.inventoryManager.getInventory().getAmount('425;6')
-            },
-            {
-                name: 'Flare Gun',
-                amount: this.bot.inventoryManager.getInventory().getAmount('39;6')
-            },
-            {
-                name: 'Flying Guillotine',
-                amount: this.bot.inventoryManager.getInventory().getAmount('812;6')
-            },
-            {
-                name: 'Gunboats',
-                amount: this.bot.inventoryManager.getInventory().getAmount('133;6')
-            },
-            {
-                name: 'Jarate',
-                amount: this.bot.inventoryManager.getInventory().getAmount('58;6')
-            },
-            {
-                name: 'Kritzkrieg',
-                amount: this.bot.inventoryManager.getInventory().getAmount('35;6')
-            },
-            {
-                name: "L'Etranger",
-                amount: this.bot.inventoryManager.getInventory().getAmount('224;6')
-            },
-            {
-                name: 'Mad Milk',
-                amount: this.bot.inventoryManager.getInventory().getAmount('222;6')
-            },
-            {
-                name: 'Manmelter',
-                amount: this.bot.inventoryManager.getInventory().getAmount('595;6')
-            },
-            {
-                name: 'Mantreads',
-                amount: this.bot.inventoryManager.getInventory().getAmount('444;6')
-            },
-            {
-                name: "Pretty Boy's Pocket Pistol",
-                amount: this.bot.inventoryManager.getInventory().getAmount('773;6')
-            },
-            {
-                name: 'Quick-Fix',
-                amount: this.bot.inventoryManager.getInventory().getAmount('411;6')
-            },
-            {
-                name: 'Quickiebomb Launcher',
-                amount: this.bot.inventoryManager.getInventory().getAmount('1150;6')
-            },
-            {
-                name: 'Razorback',
-                amount: this.bot.inventoryManager.getInventory().getAmount('57;6')
-            },
-            {
-                name: 'Reserve Shooter',
-                amount: this.bot.inventoryManager.getInventory().getAmount('415;6')
-            },
-            {
-                name: 'Righteous Bison',
-                amount: this.bot.inventoryManager.getInventory().getAmount('442;6')
-            },
-            {
-                name: 'Sandvich',
-                amount: this.bot.inventoryManager.getInventory().getAmount('42;6')
-            },
-            {
-                name: 'Scorch Shot',
-                amount: this.bot.inventoryManager.getInventory().getAmount('740;6')
-            },
-            {
-                name: 'Scottish Resistance',
-                amount: this.bot.inventoryManager.getInventory().getAmount('130;6')
-            },
-            {
-                name: 'Short Circuit',
-                amount: this.bot.inventoryManager.getInventory().getAmount('528;6')
-            },
-            {
-                name: 'Splendid Screen',
-                amount: this.bot.inventoryManager.getInventory().getAmount('406;6')
-            },
-            {
-                name: 'Sticky Jumper',
-                amount: this.bot.inventoryManager.getInventory().getAmount('265;6')
-            },
-            {
-                name: 'Tide Turner',
-                amount: this.bot.inventoryManager.getInventory().getAmount('1099;6')
-            },
-            {
-                name: 'Vaccinator',
-                amount: this.bot.inventoryManager.getInventory().getAmount('998;6')
-            },
-            {
-                name: 'Winger',
-                amount: this.bot.inventoryManager.getInventory().getAmount('449;6')
-            },
-            {
-                name: 'Wrangler',
-                amount: this.bot.inventoryManager.getInventory().getAmount('140;6')
-            },
-            {
-                name: 'Air Strike',
-                amount: this.bot.inventoryManager.getInventory().getAmount('1104;6')
-            },
-            {
-                name: "Ali Baba's Wee Booties",
-                amount: this.bot.inventoryManager.getInventory().getAmount('405;6')
-            },
-            {
-                name: "Baby Face's Blaster",
-                amount: this.bot.inventoryManager.getInventory().getAmount('772;6')
-            },
-            {
-                name: 'Back Scatter',
-                amount: this.bot.inventoryManager.getInventory().getAmount('1103;6')
-            },
-            {
-                name: 'Backburner',
-                amount: this.bot.inventoryManager.getInventory().getAmount('40;6')
-            },
-            {
-                name: 'Bazaar Bargain',
-                amount: this.bot.inventoryManager.getInventory().getAmount('402;6')
-            },
-            {
-                name: "Beggar's Bazooka",
-                amount: this.bot.inventoryManager.getInventory().getAmount('730;6')
-            },
-            {
-                name: 'Black Box',
-                amount: this.bot.inventoryManager.getInventory().getAmount('228;6')
-            },
-            {
-                name: 'Blutsauger',
-                amount: this.bot.inventoryManager.getInventory().getAmount('36;6')
-            },
-            {
-                name: 'Bootlegger',
-                amount: this.bot.inventoryManager.getInventory().getAmount('608;6')
-            },
-            {
-                name: 'Brass Beast',
-                amount: this.bot.inventoryManager.getInventory().getAmount('312;6')
-            },
-            {
-                name: 'Classic',
-                amount: this.bot.inventoryManager.getInventory().getAmount('1098;6')
-            },
-            {
-                name: 'Cow Mangler 5000',
-                amount: this.bot.inventoryManager.getInventory().getAmount('441;6')
-            },
-            {
-                name: "Crusader's Crossbow",
-                amount: this.bot.inventoryManager.getInventory().getAmount('305;6')
-            },
-            {
-                name: 'Degreaser',
-                amount: this.bot.inventoryManager.getInventory().getAmount('215;6')
-            },
-            {
-                name: 'Direct Hit',
-                amount: this.bot.inventoryManager.getInventory().getAmount('127;6')
-            },
-            {
-                name: 'Force-A-Nature',
-                amount: this.bot.inventoryManager.getInventory().getAmount('45;6')
-            },
-            {
-                name: 'Fortified Compound',
-                amount: this.bot.inventoryManager.getInventory().getAmount('1092;6')
-            },
-            {
-                name: 'Frontier Justice',
-                amount: this.bot.inventoryManager.getInventory().getAmount('141;6')
-            },
-            {
-                name: "Hitman's Heatmaker",
-                amount: this.bot.inventoryManager.getInventory().getAmount('752;6')
-            },
-            {
-                name: 'Huntsman',
-                amount: this.bot.inventoryManager.getInventory().getAmount('56;6')
-            },
-            {
-                name: 'Huo-Long Heater',
-                amount: this.bot.inventoryManager.getInventory().getAmount('811;6')
-            },
-            {
-                name: 'Iron Bomber',
-                amount: this.bot.inventoryManager.getInventory().getAmount('1151;6')
-            },
-            {
-                name: 'Liberty Launcher',
-                amount: this.bot.inventoryManager.getInventory().getAmount('414;6')
-            },
-            {
-                name: 'Loch-n-Load',
-                amount: this.bot.inventoryManager.getInventory().getAmount('308;6')
-            },
-            {
-                name: 'Loose Cannon',
-                amount: this.bot.inventoryManager.getInventory().getAmount('996;6')
-            },
-            {
-                name: 'Machina',
-                amount: this.bot.inventoryManager.getInventory().getAmount('526;6')
-            },
-            {
-                name: 'Natascha',
-                amount: this.bot.inventoryManager.getInventory().getAmount('41;6')
-            },
-            {
-                name: 'Original',
-                amount: this.bot.inventoryManager.getInventory().getAmount('513;6')
-            },
-            {
-                name: 'Overdose',
-                amount: this.bot.inventoryManager.getInventory().getAmount('412;6')
-            },
-            {
-                name: 'Panic Attack',
-                amount: this.bot.inventoryManager.getInventory().getAmount('1153;6')
-            },
-            {
-                name: 'Phlogistinator',
-                amount: this.bot.inventoryManager.getInventory().getAmount('594;6')
-            },
-            {
-                name: 'Pomson 6000',
-                amount: this.bot.inventoryManager.getInventory().getAmount('588;6')
-            },
-            {
-                name: 'Rainblower',
-                amount: this.bot.inventoryManager.getInventory().getAmount('741;6')
-            },
-            {
-                name: 'Rescue Ranger',
-                amount: this.bot.inventoryManager.getInventory().getAmount('997;6')
-            },
-            {
-                name: 'Rocket Jumper',
-                amount: this.bot.inventoryManager.getInventory().getAmount('237;6')
-            },
-            {
-                name: 'Shortstop',
-                amount: this.bot.inventoryManager.getInventory().getAmount('220;6')
-            },
-            {
-                name: 'Soda Popper',
-                amount: this.bot.inventoryManager.getInventory().getAmount('448;6')
-            },
-            {
-                name: 'Sydney Sleeper',
-                amount: this.bot.inventoryManager.getInventory().getAmount('230;6')
-            },
-            {
-                name: 'Tomislav',
-                amount: this.bot.inventoryManager.getInventory().getAmount('424;6')
-            },
-            {
-                name: 'Widowmaker',
-                amount: this.bot.inventoryManager.getInventory().getAmount('527;6')
-            },
-            {
-                name: 'Cloak and Dagger',
-                amount: this.bot.inventoryManager.getInventory().getAmount('60;6')
-            },
-            {
-                name: 'Dead Ringer',
-                amount: this.bot.inventoryManager.getInventory().getAmount('59;6')
-            },
-            {
-                name: 'Amputator',
-                amount: this.bot.inventoryManager.getInventory().getAmount('304;6')
-            },
-            {
-                name: 'Atomizer',
-                amount: this.bot.inventoryManager.getInventory().getAmount('450;6')
-            },
-            {
-                name: 'Axtinguisher',
-                amount: this.bot.inventoryManager.getInventory().getAmount('38;6')
-            },
-            {
-                name: 'Back Scratcher',
-                amount: this.bot.inventoryManager.getInventory().getAmount('326;6')
-            },
-            {
-                name: 'Bat Outta Hell',
-                amount: this.bot.inventoryManager.getInventory().getAmount('939;6')
-            },
-            {
-                name: 'Big Earner',
-                amount: this.bot.inventoryManager.getInventory().getAmount('461;6')
-            },
-            {
-                name: 'Boston Basher',
-                amount: this.bot.inventoryManager.getInventory().getAmount('325;6')
-            },
-            {
-                name: 'Bushwacka',
-                amount: this.bot.inventoryManager.getInventory().getAmount('232;6')
-            },
-            {
-                name: 'Candy Cane',
-                amount: this.bot.inventoryManager.getInventory().getAmount('317;6')
-            },
-            {
-                name: 'Claidheamh Mòr',
-                amount: this.bot.inventoryManager.getInventory().getAmount('327;6')
-            },
-            {
-                name: "Conniver's Kunai",
-                amount: this.bot.inventoryManager.getInventory().getAmount('356;6')
-            },
-            {
-                name: 'Disciplinary Action',
-                amount: this.bot.inventoryManager.getInventory().getAmount('447;6')
-            },
-            {
-                name: 'Equalizer',
-                amount: this.bot.inventoryManager.getInventory().getAmount('128;6')
-            },
-            {
-                name: 'Escape Plan',
-                amount: this.bot.inventoryManager.getInventory().getAmount('775;6')
-            },
-            {
-                name: 'Eureka Effect',
-                amount: this.bot.inventoryManager.getInventory().getAmount('589;6')
-            },
-            {
-                name: 'Eviction Notice',
-                amount: this.bot.inventoryManager.getInventory().getAmount('426;6')
-            },
-            {
-                name: 'Eyelander',
-                amount: this.bot.inventoryManager.getInventory().getAmount('132;6')
-            },
-            {
-                name: "Fan O'War",
-                amount: this.bot.inventoryManager.getInventory().getAmount('355;6')
-            },
-            {
-                name: 'Fists of Steel',
-                amount: this.bot.inventoryManager.getInventory().getAmount('331;6')
-            },
-            {
-                name: 'Gloves of Running Urgently',
-                amount: this.bot.inventoryManager.getInventory().getAmount('239;6')
-            },
-            {
-                name: 'Gunslinger',
-                amount: this.bot.inventoryManager.getInventory().getAmount('142;6')
-            },
-            {
-                name: 'Half-Zatoichi',
-                amount: this.bot.inventoryManager.getInventory().getAmount('357;6')
-            },
-            {
-                name: 'Holiday Punch',
-                amount: this.bot.inventoryManager.getInventory().getAmount('656;6')
-            },
-            {
-                name: 'Holy Mackerel',
-                amount: this.bot.inventoryManager.getInventory().getAmount('221;6')
-            },
-            {
-                name: 'Homewrecker',
-                amount: this.bot.inventoryManager.getInventory().getAmount('153;6')
-            },
-            {
-                name: 'Jag',
-                amount: this.bot.inventoryManager.getInventory().getAmount('329;6')
-            },
-            {
-                name: 'Killing Gloves of Boxing',
-                amount: this.bot.inventoryManager.getInventory().getAmount('43;6')
-            },
-            {
-                name: 'Lollichop',
-                amount: this.bot.inventoryManager.getInventory().getAmount('739;6')
-            },
-            {
-                name: 'Market Gardener',
-                amount: this.bot.inventoryManager.getInventory().getAmount('416;6')
-            },
-            {
-                name: 'Neon Annihilator',
-                amount: this.bot.inventoryManager.getInventory().getAmount('813;6')
-            },
-            {
-                name: "Nessie's Nine Iron",
-                amount: this.bot.inventoryManager.getInventory().getAmount('482;6')
-            },
-            {
-                name: 'Pain Train',
-                amount: this.bot.inventoryManager.getInventory().getAmount('154;6')
-            },
-            {
-                name: 'Persian Persuader',
-                amount: this.bot.inventoryManager.getInventory().getAmount('404;6')
-            },
-            {
-                name: 'Postal Pummeler',
-                amount: this.bot.inventoryManager.getInventory().getAmount('457;6')
-            },
-            {
-                name: 'Powerjack',
-                amount: this.bot.inventoryManager.getInventory().getAmount('214;6')
-            },
-            {
-                name: 'Sandman',
-                amount: this.bot.inventoryManager.getInventory().getAmount('44;6')
-            },
-            {
-                name: "Scotsman's Skullcutter",
-                amount: this.bot.inventoryManager.getInventory().getAmount('172;6')
-            },
-            {
-                name: 'Scottish Handshake',
-                amount: this.bot.inventoryManager.getInventory().getAmount('609;6')
-            },
-            {
-                name: 'Shahanshah',
-                amount: this.bot.inventoryManager.getInventory().getAmount('401;6')
-            },
-            {
-                name: 'Sharpened Volcano Fragment',
-                amount: this.bot.inventoryManager.getInventory().getAmount('348;6')
-            },
-            {
-                name: 'Solemn Vow',
-                amount: this.bot.inventoryManager.getInventory().getAmount('413;6')
-            },
-            {
-                name: 'Southern Hospitality',
-                amount: this.bot.inventoryManager.getInventory().getAmount('155;6')
-            },
-            {
-                name: 'Spy-cicle',
-                amount: this.bot.inventoryManager.getInventory().getAmount('649;6')
-            },
-            {
-                name: 'Sun-on-a-Stick',
-                amount: this.bot.inventoryManager.getInventory().getAmount('349;6')
-            },
-            {
-                name: 'Third Degree',
-                amount: this.bot.inventoryManager.getInventory().getAmount('593;6')
-            },
-            {
-                name: "Tribalman's Shiv",
-                amount: this.bot.inventoryManager.getInventory().getAmount('171;6')
-            },
-            {
-                name: 'Ubersaw',
-                amount: this.bot.inventoryManager.getInventory().getAmount('37;6')
-            },
-            {
-                name: 'Ullapool Caber',
-                amount: this.bot.inventoryManager.getInventory().getAmount('307;6')
-            },
-            {
-                name: 'Vita-Saw',
-                amount: this.bot.inventoryManager.getInventory().getAmount('173;6')
-            },
-            {
-                name: "Warrior's Spirit",
-                amount: this.bot.inventoryManager.getInventory().getAmount('310;6')
-            },
-            {
-                name: 'Wrap Assassin',
-                amount: this.bot.inventoryManager.getInventory().getAmount('648;6')
-            },
-            {
-                name: 'Your Eternal Reward',
-                amount: this.bot.inventoryManager.getInventory().getAmount('225;6')
-            },
-            {
-                name: 'Red-Tape Recorder',
-                amount: this.bot.inventoryManager.getInventory().getAmount('810;6')
-            },
-            {
-                name: 'Gas Passer',
-                amount: this.bot.inventoryManager.getInventory().getAmount('1180;6')
-            },
-            {
-                name: 'Second Banana',
-                amount: this.bot.inventoryManager.getInventory().getAmount('1190;6')
-            },
-            {
-                name: 'Thermal Thruster',
-                amount: this.bot.inventoryManager.getInventory().getAmount('1179;6')
-            },
-            {
-                name: "Dragon's Fury",
-                amount: this.bot.inventoryManager.getInventory().getAmount('1178;6')
-            },
-            {
-                name: 'Hot Hand',
-                amount: this.bot.inventoryManager.getInventory().getAmount('1181;6')
+        const craftWeapons = (this.bot.handler as MyHandler).craftweaponOnlyCraftable();
+
+        const items: { amount: number; name: string }[] = [];
+
+        craftWeapons.forEach(sku => {
+            items.push({
+                name: this.bot.schema.getName(SKU.fromString(sku), false),
+                amount: this.bot.inventoryManager.getInventory().getAmount(sku)
+            });
+        });
+
+        items.sort(function(a, b) {
+            if (a.amount === b.amount) {
+                if (a.name < b.name) {
+                    return -1;
+                } else if (a.name > b.name) {
+                    return 1;
+                }
             }
-        ];
+            return b.amount - a.amount;
+        });
+
+        const craftWeaponsStock: string[] = [];
 
         for (let i = 0; i < craftWeapons.length; i++) {
             craftWeaponsStock.push(
-                craftWeapons[i].name +
-                    ': ' +
-                    (craftWeapons[i].amount <= 6 ? craftWeapons[i].amount + ' ❗❗' : craftWeapons[i].amount + ' ✅')
+                items[i].name + ': ' + (items[i].amount <= 6 ? items[i].amount + ' ❗❗' : items[i].amount + ' ✅')
             );
         }
         return craftWeaponsStock;
+    }
+
+    private uncraftWeapons(): string[] {
+        const uncraftWeapons = (this.bot.handler as MyHandler).craftweaponOnlyUncraftable();
+
+        const items: { amount: number; name: string }[] = [];
+
+        uncraftWeapons.forEach(sku => {
+            items.push({
+                name: this.bot.schema.getName(SKU.fromString(sku), false),
+                amount: this.bot.inventoryManager.getInventory().getAmount(sku)
+            });
+        });
+
+        items.sort(function(a, b) {
+            if (a.amount === b.amount) {
+                if (a.name < b.name) {
+                    return -1;
+                } else if (a.name > b.name) {
+                    return 1;
+                }
+            }
+            return b.amount - a.amount;
+        });
+
+        const uncraftWeaponsStock: string[] = [];
+
+        for (let i = 0; i < uncraftWeapons.length; i++) {
+            uncraftWeaponsStock.push(
+                items[i].name + ': ' + (items[i].amount <= 6 ? items[i].amount + ' ❗❗' : items[i].amount + ' ✅')
+            );
+        }
+        return uncraftWeaponsStock;
     }
 };
 

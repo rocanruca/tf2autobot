@@ -93,6 +93,8 @@ export = class MyHandler extends Handler {
 
     private hasInvalidValueException = false;
 
+    private isAcceptedWithInvalidItemsOrOverstocked = false;
+
     recentlySentMessage: UnknownDictionary<number> = {};
 
     constructor(bot: Bot) {
@@ -210,6 +212,10 @@ export = class MyHandler extends Handler {
 
     getMinimumKeysDupeCheck(): number {
         return this.minimumKeysDupeCheck;
+    }
+
+    getAcceptedWithInvalidItemsOrOverstockedStatus(): boolean {
+        return this.isAcceptedWithInvalidItemsOrOverstocked;
     }
 
     getAutokeysEnabled(): boolean {
@@ -1049,6 +1055,7 @@ export = class MyHandler extends Handler {
                         this.bot.schema
                     )}`
                 );
+                this.isAcceptedWithInvalidItemsOrOverstocked = true;
                 return { action: 'accept', reason: 'VALID' };
             } else if (
                 // If only INVALID_VALUE and did not matched exception value, will just decline the trade.
@@ -1135,7 +1142,12 @@ export = class MyHandler extends Handler {
                                         "\n[You're missing: " +
                                         (itemsList.their.includes('5021;6')
                                             ? `${value.diffKey}]`
-                                            : `${value.diffRef} ref]`)
+                                            : `${value.diffRef} ref]`) +
+                                        `${
+                                            process.env.AUTO_DECLINE_INVALID_VALUE_NOTE
+                                                ? '\n\nNote from owner: ' + process.env.AUTO_DECLINE_INVALID_VALUE_NOTE
+                                                : ''
+                                        }`
                                       : '')
                     );
                 } else if (offer.state === TradeOfferManager.ETradeOfferState.Canceled) {
@@ -1204,6 +1216,7 @@ export = class MyHandler extends Handler {
                         links,
                         timeWithEmojis.time
                     );
+                    this.isAcceptedWithInvalidItemsOrOverstocked = false;
                 } else {
                     this.bot.messageAdmins(
                         'trade',

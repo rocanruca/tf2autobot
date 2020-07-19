@@ -43,6 +43,9 @@ export = {
             // sell price
             $ref: 'tf2-currencies'
         },
+        note: {
+            type: 'string'
+        },
         time: {
             // time when the price changed
             anyOf: [
@@ -56,5 +59,5 @@ export = {
         }
     },
     additionalProperties: false,
-    required: ['sku', 'enabled', 'intent', 'autoprice', 'max', 'min', 'buy', 'sell', 'time']
+    required: ['sku', 'enabled', 'intent', 'autoprice', 'max', 'min', 'buy', 'sell', 'note', 'time']
 };

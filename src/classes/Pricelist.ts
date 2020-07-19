@@ -24,6 +24,7 @@ export interface EntryData {
     intent: 0 | 1 | 2;
     buy?: Currency | null;
     sell?: Currency | null;
+    note?: { buy: string; sell: string } | null;
     time?: number | null;
 }
 
@@ -45,6 +46,8 @@ export class Entry {
     buy: Currencies | null;
 
     sell: Currencies | null;
+
+    note: { buy: string; sell: string } | null; // Will continue later
 
     time: number | null;
 

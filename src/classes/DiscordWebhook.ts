@@ -200,7 +200,9 @@ export = class DiscordWebhook {
             .replace(/~/g, '⁓')
             .replace(/`/g, '^')
             .replace(/>/g, '<')
-            .replace(/\|/g, '!');
+            .replace(/\|/g, '!')
+            .replace(/\[/g, '💫')
+            .replace(/\]/g, '💫');
 
         let partnerAvatar: string;
         let partnerName: string;
@@ -223,7 +225,9 @@ export = class DiscordWebhook {
                 .replace(/~/g, '⁓')
                 .replace(/`/g, '^')
                 .replace(/>/g, '<')
-                .replace(/\|/g, '!');
+                .replace(/\|/g, '!')
+                .replace(/\[/g, '💫')
+                .replace(/\]/g, '💫');
 
             const isShowQuickLinks = process.env.DISCORD_WEBHOOK_REVIEW_OFFER_SHOW_QUICK_LINKS !== 'false';
             const isShowKeyRate = process.env.DISCORD_WEBHOOK_REVIEW_OFFER_SHOW_KEY_RATE !== 'false';
@@ -337,12 +341,6 @@ export = class DiscordWebhook {
             });
         });
 
-        const theirItemsFiltered = theirItems.filter(sku => !['5021;6', '5000;6', '5001;6', '5002;6'].includes(sku));
-
-        if (process.env.DISABLE_CRAFTWEAPON_AS_CURRENCY === 'false') {
-            theirItemsFiltered.filter(sku => !(this.bot.handler as MyHandler).craftweapon().includes(sku));
-        }
-
         const isMentionInvalidItems = (this.bot.handler as MyHandler).getAcceptedWithInvalidItemsOrOverstockedStatus();
 
         const mentionOwner =
@@ -351,7 +349,7 @@ export = class DiscordWebhook {
                 : this.enableMentionOwner === true &&
                   process.env.DISABLE_ACCEPT_INVALID_ITEMS_OVERPAY === 'false' &&
                   isMentionInvalidItems
-                ? `<@!${this.ownerID}> - Accepted INVALID_ITEMS/OVERSTOCKED same value/overpay trade here!`
+                ? `<@!${this.ownerID}> - Accepted INVALID_ITEMS/OVERSTOCKED overpay trade here!`
                 : '';
 
         const botName = this.botName;
@@ -386,7 +384,9 @@ export = class DiscordWebhook {
                 .replace(/~/g, '⁓')
                 .replace(/`/g, '^')
                 .replace(/>/g, '<')
-                .replace(/\|/g, '!');
+                .replace(/\|/g, '!')
+                .replace(/\[/g, '💫')
+                .replace(/\]/g, '💫');
 
             const isShowQuickLinks = process.env.DISCORD_WEBHOOK_TRADE_SUMMARY_SHOW_QUICK_LINKS !== 'false';
             const isShowKeyRate = process.env.DISCORD_WEBHOOK_TRADE_SUMMARY_SHOW_KEY_RATE !== 'false';

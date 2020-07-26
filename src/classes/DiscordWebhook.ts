@@ -267,7 +267,7 @@ export = class DiscordWebhook {
                                 : '') +
                             `${
                                 invalidItemsName.length !== 0
-                                    ? `\n\n🟨INVALID_ITEMS - ${invalidItemsName.join(', ')}`
+                                    ? `\n\n🟨INVALID_ITEMS - ${invalidItemsName.join(',\n')}`
                                     : ''
                             }${
                                 invalidItemsName.length !== 0 && overstockedItemsName.length !== 0
@@ -316,6 +316,7 @@ export = class DiscordWebhook {
         isBankingKeys: boolean,
         tradeSummary: string,
         pureStock: string[],
+        currentItems: number,
         keyPrice: { buy: Currencies; sell: Currencies },
         value: { diff: number; diffRef: number; diffKey: string },
         items: { their: string[]; our: string[] },
@@ -391,6 +392,7 @@ export = class DiscordWebhook {
             const isShowQuickLinks = process.env.DISCORD_WEBHOOK_TRADE_SUMMARY_SHOW_QUICK_LINKS !== 'false';
             const isShowKeyRate = process.env.DISCORD_WEBHOOK_TRADE_SUMMARY_SHOW_KEY_RATE !== 'false';
             const isShowPureStock = process.env.DISCORD_WEBHOOK_TRADE_SUMMARY_SHOW_PURE_STOCK !== 'false';
+            const isShowInventory = process.env.DISCORD_WEBHOOK_TRADE_SUMMARY_SHOW_INVENTORY !== 'false';
             const AdditionalNotes = process.env.DISCORD_WEBHOOK_TRADE_SUMMARY_ADDITIONAL_DESCRIPTION_NOTE;
 
             /*eslint-disable */
@@ -442,6 +444,7 @@ export = class DiscordWebhook {
                                   }`
                                 : '') +
                             (isShowPureStock ? `\n💰 Pure stock: ${pureStock.join(', ').toString()}` : '') +
+                            (isShowInventory ? `\n🎒 Total items: ${currentItems}` : '') +
                             (AdditionalNotes ? '\n' + AdditionalNotes : ''),
                         color: botEmbedColor
                     }

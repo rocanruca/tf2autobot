@@ -1190,6 +1190,7 @@ export = class MyHandler extends Handler {
                 const timeWithEmojis = this.timeWithEmoji();
                 const links = this.tradePartnerLinks(offer.partner.toString());
                 const itemsList = this.itemList(offer);
+                const currentItems = this.bot.inventoryManager.getInventory().getTotalItems();
 
                 const keyPrice = this.bot.pricelist.getKeyPrices();
                 const value = this.valueDiff(offer, keyPrice);
@@ -1206,6 +1207,7 @@ export = class MyHandler extends Handler {
                         isBankingKeys,
                         offer.summarizeWithLink(this.bot.schema),
                         pureStock,
+                        currentItems,
                         keyPrice,
                         value,
                         itemsList,
@@ -1233,8 +1235,9 @@ export = class MyHandler extends Handler {
                                             (isBankingKeys ? ' (banking)' : isBuyingKeys ? ' (buying)' : ' (selling)')
                                           : '🛑')
                                     : ''
-                            }
-                        💰 Pure stock: ${pureStock.join(', ').toString()}`,
+                            }` +
+                            `\n💰 Pure stock: ${pureStock.join(', ').toString()}` +
+                            `\n🎒 Total items: ${currentItems}`,
                         []
                     );
                 }
@@ -1453,7 +1456,7 @@ export = class MyHandler extends Handler {
                                 : ''
                         }${offerMessage.length !== 0 ? `\n\n💬 Offer message: "${offerMessage}"` : ''}${
                             invalidItemsName.length !== 0
-                                ? `\n\n🟨INVALID_ITEMS - ${invalidItemsCombine.join(',\n ')}`
+                                ? `\n\n🟨INVALID_ITEMS - ${invalidItemsCombine.join(',\n')}`
                                 : ''
                         }${
                             invalidItemsName.length !== 0 && overstockedItemsName.length !== 0

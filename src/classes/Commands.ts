@@ -29,7 +29,7 @@ const COMMANDS: string[] = [
     '!how2trade - Guide on how to use and trade with the bot 📋',
     '!time - Show owner current time 🕥',
     '!stock - Get a list of items that the bot has 📊',
-    '!pure - Get current pure stock 💰',
+    '!pure - Get my current pure stock 💰',
     '!rate - Get current key prices 🔑',
     '!craftweapon - get a list of craft weapon stock 🔫',
     '!uncraftweapon - get a list of uncraft weapon stock 🔫',
@@ -53,6 +53,7 @@ const ADMIN_COMMANDS: string[] = [
     '!remove <param> - Remove a pricelist entry ✂',
     '!get <param> - Get raw information about a pricelist entry 📜',
     '!expand <param> - Uses Backpack Expanders 🎒',
+    '!inventory - Get my current inventory spaces 🎒',
     '!deposit <param> - Used to deposit items 📥',
     '!withdraw <param> - Used to withdraw items 📤',
     '!delete sku=<item sku> - Delete any item (use only sku) 🚮',
@@ -80,6 +81,8 @@ export = class Commands {
     readonly discord: DiscordWebhook;
 
     private queuePositionCheck;
+
+    private maxSlots: number;
 
     constructor(bot: Bot) {
         this.bot = bot;
@@ -113,6 +116,8 @@ export = class Commands {
             this.stockCommand(steamID);
         } else if (command === 'pure') {
             this.pureCommand(steamID);
+        } else if (command === 'inventory' && isAdmin) {
+            this.inventoryCommand(steamID);
         } else if (command === 'time') {
             this.timeCommand(steamID);
         } else if (command === 'autokeys' && isAdmin) {
@@ -415,6 +420,12 @@ export = class Commands {
         const pureStock = (this.bot.handler as MyHandler).pureStock();
 
         this.bot.sendMessage(steamID, `💰 I have currently ${pureStock.join(' and ')} in my inventory.`);
+    }
+
+    private inventoryCommand(steamID: SteamID): void {
+        const currentItems = this.bot.inventoryManager.getInventory().getTotalItems();
+
+        this.bot.sendMessage(steamID, `🎒 My crrent items in my inventory: ${currentItems}`);
     }
 
     private autoKeysCommand(steamID: SteamID): void {

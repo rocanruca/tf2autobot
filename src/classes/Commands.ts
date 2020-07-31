@@ -50,6 +50,7 @@ const COMMANDS: string[] = [
 const ADMIN_COMMANDS: string[] = [
     '!add <param> - Add a pricelist entry 📝',
     '!update <param> - Update a pricelist entry 🔆',
+    '!adjustrate buy.metal=<buying price>&sell.metal=<selling price> - Manually adjust key rate (reset on restart, self-update when key rate changes)',
     '!remove <param> - Remove a pricelist entry ✂',
     '!get <param> - Get raw information about a pricelist entry 📜',
     '!expand <param> - Uses Backpack Expanders 🎒',
@@ -130,6 +131,8 @@ export = class Commands {
             this.messageCommand(steamID, message);
         } else if (command === 'rate') {
             this.rateCommand(steamID);
+        } else if (command === 'adjustrate' && isAdmin) {
+            this.adjustKeyRateCommand(steamID, message);
         } else if (command === 'cart') {
             this.cartCommand(steamID);
         } else if (command === 'clearcart') {
@@ -533,6 +536,32 @@ export = class Commands {
                 keyPrice +
                 ' is the same as one key.'
         );
+    }
+
+    private adjustKeyRateCommand(steamID: SteamID, message: string): void {
+        const params = CommandParser.parseParams(CommandParser.removeCommand(message));
+
+        if (!params || (params.buy === undefined && params.sell === undefined)) {
+            this.bot.sendMessage(
+                steamID,
+                '❌ You must include both buy AND sell price, example - "!adjustkeyrate sell.metal=56.33&buy.metal=56.22"'
+            );
+            return;
+        }
+
+        if (+params.buy.metal > +params.sell.metal) {
+            this.bot.sendMessage(steamID, '❌ Sell price must be higher than buy price.');
+            return;
+        }
+
+        const buyKeys = +params.buy.keys || 0;
+        const buyMetal = +params.buy.metal || 0;
+        const sellKeys = +params.sell.keys || 0;
+        const sellMetal = +params.sell.metal || 0;
+        const buy = { keys: buyKeys, metal: buyMetal };
+        const sell = { keys: sellKeys, metal: sellMetal };
+
+        this.bot.pricelist.adjustKeyRate(buy, sell);
     }
 
     private messageCommand(steamID: SteamID, message: string): void {

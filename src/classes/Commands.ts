@@ -424,8 +424,12 @@ export = class Commands {
 
     private inventoryCommand(steamID: SteamID): void {
         const currentItems = this.bot.inventoryManager.getInventory().getTotalItems();
+        const backpackSlots = (this.bot.handler as MyHandler).getBackpackSlots();
 
-        this.bot.sendMessage(steamID, `🎒 My crrent items in my inventory: ${currentItems}`);
+        this.bot.sendMessage(
+            steamID,
+            `🎒 My crrent items in my inventory: ${currentItems + (backpackSlots !== 0 ? '/' + backpackSlots : '')}`
+        );
     }
 
     private autoKeysCommand(steamID: SteamID): void {

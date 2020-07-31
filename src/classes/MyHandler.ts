@@ -7,6 +7,7 @@ import Inventory from './Inventory';
 import { UnknownDictionary } from '../types/common';
 import { Currency } from '../types/TeamFortress2';
 import SKU from 'tf2-sku';
+import request from '@nicklason/request-retry';
 
 import SteamUser from 'steam-user';
 import TradeOfferManager, { TradeOffer, PollData } from 'steam-tradeoffer-manager';
@@ -95,11 +96,13 @@ export = class MyHandler extends Handler {
 
     private hasInvalidValueException = false;
 
-    private isAcceptedWithInvalidItemsOrOverstocked = false;
-
     private isUsingAutoPrice = true;
 
     private scrapAdjustmentValue = 0;
+
+    private backpackSlots = 0;
+
+    private isAcceptedWithInvalidItemsOrOverstocked = false;
 
     recentlySentMessage: UnknownDictionary<number> = {};
 
@@ -233,8 +236,12 @@ export = class MyHandler extends Handler {
         return this.minimumKeysDupeCheck;
     }
 
-    getAcceptedWithInvalidItemsOrOverstockedStatus(): boolean {
-        return this.isAcceptedWithInvalidItemsOrOverstocked;
+    getCustomGame(): string {
+        return this.customGameName;
+    }
+
+    getBackpackSlots(): number {
+        return this.backpackSlots;
     }
 
     getUserAutokeys(): {
@@ -264,6 +271,10 @@ export = class MyHandler extends Handler {
             scrapAdjustmentValue: this.scrapAdjustmentValue
         };
         return settings;
+    }
+
+    getAcceptedWithInvalidItemsOrOverstockedStatus(): boolean {
+        return this.isAcceptedWithInvalidItemsOrOverstocked;
     }
 
     onRun(): Promise<{
@@ -298,6 +309,9 @@ export = class MyHandler extends Handler {
         this.bot.client.gamesPlayed([this.customGameName, 440]);
         this.bot.client.setPersona(SteamUser.EPersonaState.Online);
 
+        // GetBackpackSlots
+        this.requestBackpackSlots();
+
         // Smelt / combine metal if needed
         this.keepMetalSupply();
 
@@ -328,8 +342,8 @@ export = class MyHandler extends Handler {
             }
 
             if (process.env.ENABLE_AUTO_SELL_AND_BUY_KEYS === 'true' && this.checkAutokeysStatus === true) {
-                log.debug('Disabling autokeys...');
-                this.updateToDisableAutokeys();
+                log.debug('Disabling autokeys and removing key from pricelist...');
+                this.removeAutoKeys();
             }
 
             this.bot.listings.removeAll().asCallback(function(err) {
@@ -736,7 +750,6 @@ export = class MyHandler extends Handler {
                         this.invalidItemsSKU.push(sku);
 
                         this.sleep(1000);
-
                         const price = await this.bot.pricelist.getPricesTF(sku);
 
                         if (price === null) {
@@ -744,9 +757,12 @@ export = class MyHandler extends Handler {
                         } else {
                             price.buy = new Currencies(price.buy);
                             price.sell = new Currencies(price.sell);
-                            exchange[which].value += price[intentString].toValue(keyPrice.metal) * amount;
-                            exchange[which].keys += price[intentString].keys * amount;
-                            exchange[which].scrap += Currencies.toScrap(price[intentString].metal) * amount;
+
+                            if (process.env.DISABLE_GIVE_PRICE_TO_INVALID_ITEMS !== 'true') {
+                                exchange[which].value += price[intentString].toValue(keyPrice.metal) * amount;
+                                exchange[which].keys += price[intentString].keys * amount;
+                                exchange[which].scrap += Currencies.toScrap(price[intentString].metal) * amount;
+                            }
                             const itemSuggestedValue = Currencies.toCurrencies(
                                 price[intentString].toValue(keyPrice.metal)
                             );
@@ -938,7 +954,7 @@ export = class MyHandler extends Handler {
             }
         } catch (err) {
             log.warn('Failed to check escrow: ', err);
-            return;
+            return { action: 'skip', reason: '⬜STEAM_DOWN' };
         }
 
         offer.log('info', 'checking bans...');
@@ -952,7 +968,7 @@ export = class MyHandler extends Handler {
             }
         } catch (err) {
             log.warn('Failed to check banned: ', err);
-            return;
+            return { action: 'skip', reason: '⬜BACKPACKTF_DOWN' };
         }
 
         if (this.dupeCheckEnabled && assetidsToCheck.length > 0) {
@@ -1015,22 +1031,29 @@ export = class MyHandler extends Handler {
             }
         }
 
+        this.isAcceptedWithInvalidItemsOrOverstocked = false;
         if (wrongAboutOffer.length !== 0) {
             const reasons = wrongAboutOffer.map(wrong => wrong.reason);
             const uniqueReasons = reasons.filter(reason => reasons.includes(reason));
+            const moreThanOnly =
+                (process.env.DISABLE_GIVE_PRICE_TO_INVALID_ITEMS === 'false' ||
+                    process.env.DISABLE_ACCEPT_OVERSTOCKED_OVERPAY === 'false') &&
+                exchange.our.value < exchange.their.value;
+            const moreThanOrEqualTo =
+                process.env.DISABLE_GIVE_PRICE_TO_INVALID_ITEMS === 'true' &&
+                exchange.our.value <= exchange.their.value;
 
-            this.isAcceptedWithInvalidItemsOrOverstocked = false;
             if (
                 ((uniqueReasons.includes('🟨INVALID_ITEMS') &&
                     process.env.DISABLE_ACCEPT_INVALID_ITEMS_OVERPAY !== 'true') ||
                     (uniqueReasons.includes('🟦OVERSTOCKED') &&
-                        !(process.env.DISABLE_ACCEPT_OVERSTOCKED_OVERPAY !== 'false'))) &&
+                        process.env.DISABLE_ACCEPT_OVERSTOCKED_OVERPAY !== 'true')) &&
                 !(
                     uniqueReasons.includes('🟥INVALID_VALUE') ||
                     uniqueReasons.includes('🟫DUPED_ITEMS') ||
                     uniqueReasons.includes('🟪DUPE_CHECK_FAILED')
                 ) &&
-                exchange.our.value <= exchange.their.value &&
+                (moreThanOnly || moreThanOrEqualTo) &&
                 exchange.our.value !== 0
             ) {
                 this.isAcceptedWithInvalidItemsOrOverstocked = true;
@@ -1100,6 +1123,15 @@ export = class MyHandler extends Handler {
                             ? process.env.CUSTOM_SUCCESS_MESSAGE
                             : '/pre ✅ Success! The offer went through successfully.'
                     );
+                } else if (offer.state === TradeOfferManager.ETradeOfferState.InEscrow) {
+                    this.bot.sendMessage(
+                        offer.partner,
+                        '✅ Success! The offer went through successfully, but you will receive your items after ~15 days.' +
+                            ' Please use Steam Guard Mobile Authenticator so you will no longer need to wait like this in the future.' +
+                            '\nRead:\n' +
+                            '• Steam Guard Mobile Authenticator - https://support.steampowered.com/kb_article.php?ref=8625-WRAH-9030' +
+                            '• Steam Guard: How to set up a Steam Guard Mobile Authenticator - https://support.steampowered.com/kb_article.php?ref=4440-RTUI-9218'
+                    );
                 } else if (offer.state === TradeOfferManager.ETradeOfferState.Declined) {
                     const offerReason: { reason: string } = offer.data('action');
                     const keyPrice = this.bot.pricelist.getKeyPrices();
@@ -1111,7 +1143,7 @@ export = class MyHandler extends Handler {
                     if (!offerReason) {
                         reason = '';
                     } else if (offerReason.reason === 'GIFT_NO_NOTE') {
-                        reason = `the offer you've sent is an empty offer on my side without any offer message. If you wish to give it as a gift, please include "gift" in the offer message. Thank you.`;
+                        reason = `the offer you've sent is an empty offer on my side/your side without any offer message. You can't take anything from me, or if you wish to send me a gift, please include "gift" in the offer message. Thank you.`;
                     } else if (offerReason.reason === 'DUELING_NOT_5_USES') {
                         reason = 'your offer contains Dueling Mini-Game that are not 5 uses.';
                     } else if (offerReason.reason === 'NOISE_MAKER_NOT_25_USES') {
@@ -1192,6 +1224,21 @@ export = class MyHandler extends Handler {
                 const itemsList = this.itemList(offer);
                 const currentItems = this.bot.inventoryManager.getInventory().getTotalItems();
 
+                const invalidItemsName: string[] = [];
+                const invalidItemsCombine: string[] = [];
+                const isAcceptedInvalidItemsOverpay = this.isAcceptedWithInvalidItemsOrOverstocked;
+
+                if (isAcceptedInvalidItemsOverpay) {
+                    this.invalidItemsSKU.forEach(sku => {
+                        const name = this.bot.schema.getName(SKU.fromString(sku), false);
+                        invalidItemsName.push(name);
+                    });
+
+                    for (let i = 0; i < invalidItemsName.length; i++) {
+                        invalidItemsCombine.push(invalidItemsName[i] + ' - ' + this.invalidItemsValue[i]);
+                    }
+                }
+
                 const keyPrice = this.bot.pricelist.getKeyPrices();
                 const value = this.valueDiff(offer, keyPrice);
 
@@ -1208,6 +1255,8 @@ export = class MyHandler extends Handler {
                         offer.summarizeWithLink(this.bot.schema),
                         pureStock,
                         currentItems,
+                        this.backpackSlots,
+                        invalidItemsCombine,
                         keyPrice,
                         value,
                         itemsList,
@@ -1225,6 +1274,9 @@ export = class MyHandler extends Handler {
                                 : value.diff < 0
                                 ? `\n\n📉 Loss from underpay: ${value.diffRef} ref` +
                                   (value.diffRef >= keyPrice.sell.metal ? ` (${value.diffKey})` : '')
+                                : '') +
+                            (isAcceptedInvalidItemsOverpay
+                                ? '\n\n🟨INVALID_ITEMS:\n' + invalidItemsCombine.join(',\n')
                                 : '') +
                             `\n🔑 Key rate: ${keyPrice.buy.metal.toString()}/${keyPrice.sell.metal.toString()} ref` +
                             `${
@@ -1268,6 +1320,15 @@ export = class MyHandler extends Handler {
             }
 
             this.inviteToGroups(offer.partner);
+
+            this.sleep(3000);
+
+            // clear/reset these in memory
+            this.invalidItemsSKU.length = 0;
+            this.invalidItemsValue.length = 0;
+            this.overstockedItemsSKU.length = 0;
+            this.dupedItemsSKU.length = 0;
+            this.dupedFailedItemsSKU.length = 0;
         }
     }
 
@@ -1394,40 +1455,51 @@ export = class MyHandler extends Handler {
                     (itemsList.their.includes('5021;6') ? `${value.diffKey}]` : `${value.diffRef} ref]`);
             }
             // Notify partner and admin that the offer is waiting for manual review
-            this.bot.sendMessage(
-                offer.partner,
-                `/pre ⚠️ Your offer is waiting for review.\nReason: ${reasons.join(', ')}` +
-                    (process.env.DISABLE_SHOW_REVIEW_OFFER_SUMMARY !== 'true'
-                        ? '\n\nYour offer summary:\n' +
-                          offer
-                              .summarize(this.bot.schema)
-                              .replace('Asked', '  My side')
-                              .replace('Offered', 'Your side') +
-                          (reasons.includes('🟥INVALID_VALUE') && !reasons.includes('🟨INVALID_ITEMS')
-                              ? missingPureNote
-                              : '') +
-                          (process.env.DISABLE_REVIEW_OFFER_NOTE !== 'true'
-                              ? `\n\nNote:\n${reviewReasons.join('\n')}`
-                              : '')
-                        : '') +
-                    (process.env.ADDITIONAL_NOTE
-                        ? '\n\n' +
-                          process.env.ADDITIONAL_NOTE.replace(
-                              /%keyRate%/g,
-                              `${keyPrice.sell.metal.toString()} ref`
-                          ).replace(/%pureStock%/g, pureStock.join(', ').toString())
-                        : '') +
-                    (process.env.DISABLE_SHOW_CURRENT_TIME !== 'true'
-                        ? `\n\nMy owner time is currently at ${timeWithEmojis.emoji} ${timeWithEmojis.time +
-                              (timeWithEmojis.note !== '' ? `. ${timeWithEmojis.note}.` : '.')}`
-                        : '')
-            );
+            if (reason === '⬜BACKPACKTF_DOWN' || reason === '⬜STEAM_DOWN') {
+                this.bot.sendMessage(
+                    offer.partner,
+                    (reason === '⬜BACKPACKTF_DOWN' ? 'Backpack.tf' : 'Steam') +
+                        ' is down and I failed to check your ' +
+                        (reason === '⬜BACKPACKTF_DOWN' ? 'backpack.tf' : 'Escrow') +
+                        ' status, please wait for my owner to manually accept/decline your offer.'
+                );
+            } else {
+                this.bot.sendMessage(
+                    offer.partner,
+                    `⚠️ Your offer is waiting for review.\nReason: ${reasons.join(', ')}` +
+                        (process.env.DISABLE_SHOW_REVIEW_OFFER_SUMMARY !== 'true'
+                            ? '\n\nYour offer summary:\n' +
+                              offer
+                                  .summarize(this.bot.schema)
+                                  .replace('Asked', '  My side')
+                                  .replace('Offered', 'Your side') +
+                              (reasons.includes('🟥INVALID_VALUE') && !reasons.includes('🟨INVALID_ITEMS')
+                                  ? missingPureNote
+                                  : '') +
+                              (process.env.DISABLE_REVIEW_OFFER_NOTE !== 'true'
+                                  ? `\n\nNote:\n${reviewReasons.join('\n')}`
+                                  : '')
+                            : '') +
+                        (process.env.ADDITIONAL_NOTE
+                            ? '\n\n' +
+                              process.env.ADDITIONAL_NOTE.replace(
+                                  /%keyRate%/g,
+                                  `${keyPrice.sell.metal.toString()} ref`
+                              ).replace(/%pureStock%/g, pureStock.join(', ').toString())
+                            : '') +
+                        (process.env.DISABLE_SHOW_CURRENT_TIME !== 'true'
+                            ? `\n\nMy owner time is currently at ${timeWithEmojis.emoji} ${timeWithEmojis.time +
+                                  (timeWithEmojis.note !== '' ? `. ${timeWithEmojis.note}.` : '.')}`
+                            : '')
+                );
+            }
             if (
                 process.env.DISABLE_DISCORD_WEBHOOK_OFFER_REVIEW === 'false' &&
                 process.env.DISCORD_WEBHOOK_REVIEW_OFFER_URL
             ) {
                 this.discord.sendOfferReview(
                     offer,
+                    reason,
                     reasons.join(', '),
                     pureStock,
                     timeWithEmojis.time,
@@ -1445,7 +1517,13 @@ export = class MyHandler extends Handler {
                 const offerMessage = offer.message;
                 this.bot.messageAdmins(
                     `/pre ⚠️ Offer #${offer.id} from ${offer.partner} is waiting for review.` +
-                        `\nReason: ${meta.uniqueReasons.join(', ')}` +
+                        `\nReason: ${
+                            reason === '⬜BACKPACKTF_DOWN'
+                                ? '⬜BACKPACKTF_DOWN - failed to check banned status'
+                                : reason === '⬜STEAM_DOWN'
+                                ? '⬜STEAM_DOWN - failed to check escrow status'
+                                : meta.uniqueReasons.join(', ')
+                        }` +
                         `\n\nOffer Summary: ${offer.summarize(this.bot.schema)}${
                             value.diff > 0
                                 ? `\n📈 Profit from overpay: ${value.diffRef} ref` +
@@ -1691,7 +1769,7 @@ Autokeys status:-
                 this.alreadyUpdatedToBank = false;
                 this.alreadyUpdatedToBuy = false;
                 this.alreadyUpdatedToSell = false;
-                this.updateToDisableAutokeys();
+                this.removeAutoKeys();
             } else if (isRemoveAutoKeys && !isEnableKeyBanking) {
                 // disable Autokeys when conditions to disable Autokeys matched
                 this.isBuyingKeys = false;
@@ -1701,7 +1779,7 @@ Autokeys status:-
                 this.alreadyUpdatedToBank = false;
                 this.alreadyUpdatedToBuy = false;
                 this.alreadyUpdatedToSell = false;
-                this.updateToDisableAutokeys();
+                this.removeAutoKeys();
             } else if (isAlertAdmins && isAlreadyAlert !== true) {
                 // alert admins when low pure
                 this.isBuyingKeys = false;
@@ -2176,6 +2254,10 @@ Autokeys status:-
     }
 
     private inviteToGroups(steamID: SteamID | string): void {
+        if (process.env.DISABLE_GROUPS_INVITE === 'true') {
+            // You still need to include the group ID in your env.
+            return;
+        }
         this.bot.groups.inviteToGroups(steamID, this.groups);
     }
 
@@ -2334,6 +2416,38 @@ Autokeys status:-
                 this.bot.client.removeFriend(element.steamID);
             });
         }
+    }
+
+    private requestBackpackSlots(): Promise<void> {
+        return new Promise((resolve, reject) => {
+            request(
+                {
+                    url: 'https://api.steampowered.com/IEconItems_440/GetPlayerItems/v0001/',
+                    method: 'GET',
+                    qs: {
+                        key: this.bot.manager.apiKey,
+                        steamid: this.bot.client.steamID.getSteamID64()
+                    },
+                    json: true,
+                    gzip: true
+                },
+                (err, response, body) => {
+                    if (err) {
+                        return reject(err);
+                    }
+
+                    if (body.result.status != 1) {
+                        err = new Error(body.result.statusDetail);
+                        err.status = body.result.status;
+                        return reject(err);
+                    }
+
+                    this.backpackSlots = body.result.num_backpack_slots;
+
+                    return resolve();
+                }
+            );
+        });
     }
 
     private itemList(offer: TradeOffer): { their: string[]; our: string[] } {

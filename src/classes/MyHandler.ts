@@ -1934,13 +1934,15 @@ Autokeys status:-
     }
 
     private createAutokeysSell(userMinKeys: number, userMaxKeys: number): void {
-        const keyPrice = this.bot.pricelist.getKeyPrices();
+        const keyPrices = this.bot.pricelist.getKeyPrices();
         let entry;
         if (this.isUsingAutoPrice) {
             entry = {
                 sku: '5021;6',
                 enabled: true,
-                autoprice: true,
+                autoprice: false,
+                buy: { keys: keyPrices.buy.keys, metal: keyPrices.buy.metal },
+                sell: { keys: keyPrices.sell.keys, metal: keyPrices.sell.metal },
                 max: userMaxKeys,
                 min: userMinKeys,
                 intent: 1
@@ -1952,11 +1954,11 @@ Autokeys status:-
                 autoprice: false,
                 sell: {
                     keys: 0,
-                    metal: Currencies.toRefined(keyPrice.sell.toValue() - this.scrapAdjustmentValue)
+                    metal: Currencies.toRefined(keyPrices.sell.toValue() - this.scrapAdjustmentValue)
                 },
                 buy: {
                     keys: 0,
-                    metal: Currencies.toRefined(keyPrice.buy.toValue() - this.scrapAdjustmentValue)
+                    metal: Currencies.toRefined(keyPrices.buy.toValue() - this.scrapAdjustmentValue)
                 },
                 max: userMaxKeys,
                 min: userMinKeys,
@@ -1975,13 +1977,15 @@ Autokeys status:-
     }
 
     private createAutokeysBuy(userMinKeys: number, userMaxKeys: number): void {
-        const keyPrice = this.bot.pricelist.getKeyPrices();
+        const keyPrices = this.bot.pricelist.getKeyPrices();
         let entry;
         if (this.isUsingAutoPrice) {
             entry = {
                 sku: '5021;6',
                 enabled: true,
-                autoprice: true,
+                autoprice: false,
+                buy: { keys: keyPrices.buy.keys, metal: keyPrices.buy.metal },
+                sell: { keys: keyPrices.sell.keys, metal: keyPrices.sell.metal },
                 max: userMaxKeys,
                 min: userMinKeys,
                 intent: 0
@@ -1993,11 +1997,11 @@ Autokeys status:-
                 autoprice: false,
                 sell: {
                     keys: 0,
-                    metal: Currencies.toRefined(keyPrice.sell.toValue() + this.scrapAdjustmentValue)
+                    metal: Currencies.toRefined(keyPrices.sell.toValue() + this.scrapAdjustmentValue)
                 },
                 buy: {
                     keys: 0,
-                    metal: Currencies.toRefined(keyPrice.buy.toValue() + this.scrapAdjustmentValue)
+                    metal: Currencies.toRefined(keyPrices.buy.toValue() + this.scrapAdjustmentValue)
                 },
                 max: userMaxKeys,
                 min: userMinKeys,
@@ -2016,10 +2020,13 @@ Autokeys status:-
     }
 
     private createAutokeysBanking(userMinKeys: number, userMaxKeys: number): void {
+        const keyPrices = this.bot.pricelist.getKeyPrices();
         const entry = {
             sku: '5021;6',
             enabled: true,
-            autoprice: true,
+            autoprice: false,
+            buy: { keys: keyPrices.buy.keys, metal: keyPrices.buy.metal },
+            sell: { keys: keyPrices.sell.keys, metal: keyPrices.sell.metal },
             max: userMaxKeys,
             min: userMinKeys,
             intent: 2
@@ -2056,13 +2063,15 @@ Autokeys status:-
     }
 
     private updateAutokeysSell(userMinKeys: number, userMaxKeys: number): void {
-        const keyPrice = this.bot.pricelist.getKeyPrices();
+        const keyPrices = this.bot.pricelist.getKeyPrices();
         let entry;
         if (this.isUsingAutoPrice) {
             entry = {
                 sku: '5021;6',
                 enabled: true,
-                autoprice: true,
+                autoprice: false,
+                buy: { keys: keyPrices.buy.keys, metal: keyPrices.buy.metal },
+                sell: { keys: keyPrices.sell.keys, metal: keyPrices.sell.metal },
                 max: userMaxKeys,
                 min: userMinKeys,
                 intent: 1
@@ -2074,11 +2083,11 @@ Autokeys status:-
                 autoprice: false,
                 sell: {
                     keys: 0,
-                    metal: Currencies.toRefined(keyPrice.sell.toValue() - this.scrapAdjustmentValue)
+                    metal: Currencies.toRefined(keyPrices.sell.toValue() - this.scrapAdjustmentValue)
                 },
                 buy: {
                     keys: 0,
-                    metal: Currencies.toRefined(keyPrice.buy.toValue() - this.scrapAdjustmentValue)
+                    metal: Currencies.toRefined(keyPrices.buy.toValue() - this.scrapAdjustmentValue)
                 },
                 max: userMaxKeys,
                 min: userMinKeys,
@@ -2097,13 +2106,15 @@ Autokeys status:-
     }
 
     private updateAutokeysBuy(userMinKeys: number, userMaxKeys: number): void {
-        const keyPrice = this.bot.pricelist.getKeyPrices();
+        const keyPrices = this.bot.pricelist.getKeyPrices();
         let entry;
         if (this.isUsingAutoPrice) {
             entry = {
                 sku: '5021;6',
                 enabled: true,
-                autoprice: true,
+                autoprice: false,
+                buy: { keys: keyPrices.buy.keys, metal: keyPrices.buy.metal },
+                sell: { keys: keyPrices.sell.keys, metal: keyPrices.sell.metal },
                 max: userMaxKeys,
                 min: userMinKeys,
                 intent: 0
@@ -2115,11 +2126,11 @@ Autokeys status:-
                 autoprice: false,
                 sell: {
                     keys: 0,
-                    metal: Currencies.toRefined(keyPrice.sell.toValue() + this.scrapAdjustmentValue)
+                    metal: Currencies.toRefined(keyPrices.sell.toValue() + this.scrapAdjustmentValue)
                 },
                 buy: {
                     keys: 0,
-                    metal: Currencies.toRefined(keyPrice.buy.toValue() + this.scrapAdjustmentValue)
+                    metal: Currencies.toRefined(keyPrices.buy.toValue() + this.scrapAdjustmentValue)
                 },
                 max: userMaxKeys,
                 min: userMinKeys,
@@ -2138,10 +2149,13 @@ Autokeys status:-
     }
 
     private updateAutokeysBanking(userMinKeys: number, userMaxKeys: number): void {
+        const keyPrices = this.bot.pricelist.getKeyPrices();
         const entry = {
             sku: '5021;6',
             enabled: true,
-            autoprice: true,
+            autoprice: false,
+            buy: { keys: keyPrices.buy.keys, metal: keyPrices.buy.metal },
+            sell: { keys: keyPrices.sell.keys, metal: keyPrices.sell.metal },
             max: userMaxKeys,
             min: userMinKeys,
             intent: 2
@@ -2184,14 +2198,16 @@ Autokeys status:-
                     this.alreadyUpdatedToBank = false;
                     this.alreadyUpdatedToBuy = false;
                     this.alreadyUpdatedToSell = false;
+                    this.sleep(2000);
+                    this.autokeys();
                 })
                 .catch(err => {
                     log.warn(`❌ Failed to remove Mann Co. Supply Crate Key automatically: ${err.message}`);
                     this.checkAutokeysStatus = true;
                 });
+        } else {
+            this.autokeys();
         }
-        this.sleep(2000);
-        this.autokeys();
     }
 
     private keepMetalSupply(): void {

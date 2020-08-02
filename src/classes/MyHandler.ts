@@ -2196,6 +2196,19 @@ Autokeys status:-
             });
     }
 
+    refreshAutokeys(): void {
+        this.removeAutoKeys();
+        this.isBuyingKeys = false;
+        this.isBankingKeys = false;
+        this.checkAutokeysStatus = false;
+        this.checkAlertOnLowPure = false;
+        this.alreadyUpdatedToBank = false;
+        this.alreadyUpdatedToBuy = false;
+        this.alreadyUpdatedToSell = false;
+        this.sleep(2000);
+        this.autokeys();
+    }
+
     private keepMetalSupply(): void {
         if (process.env.DISABLE_CRAFTING === 'true') {
             return;

@@ -65,6 +65,7 @@ const ADMIN_COMMANDS: string[] = [
     '!block <steamid> - Block a specific user ⛔',
     '!unblock <steamid> - Unblock specific user',
     '!autokeys - Get info on your current autoBuy/Sell Keys settings 🔑',
+    '!resfreshautokeys - Refresh your autokeys settings.',
     '!trades - Get a list of offers pending for manual review 🧾💱',
     '!trade <offerID> - Get info about a trade 🧐💱',
     '!accepttrade <offerID> [Your Message] - Manually accept an active offer ✅💱',
@@ -136,6 +137,8 @@ export = class Commands {
             this.timeCommand(steamID);
         } else if (command === 'autokeys' && isAdmin) {
             this.autoKeysCommand(steamID);
+        } else if (command === 'refreshautokeys' && isAdmin) {
+            this.refreshAutokeysCommand(steamID);
         } else if (command === 'craftweapon') {
             this.craftweaponCommand(steamID);
         } else if (command === 'uncraftweapon') {
@@ -573,6 +576,18 @@ export = class Commands {
         */
 
         this.bot.sendMessage(steamID, '/pre ' + reply);
+    }
+
+    private refreshAutokeysCommand(steamID: SteamID): void {
+        const autokeys = (this.bot.handler as MyHandler).getUserAutokeys();
+
+        if (autokeys.enabled === false) {
+            this.bot.sendMessage(steamID, `This feature is disabled.`);
+            return;
+        }
+
+        (this.bot.handler as MyHandler).refreshAutokeys();
+        this.bot.sendMessage(steamID, '✅ Successfully refreshed Autokeys.');
     }
 
     private rateCommand(steamID: SteamID): void {

@@ -4,6 +4,7 @@ import pluralize from 'pluralize';
 import Currencies from 'tf2-currencies';
 import validUrl from 'valid-url';
 import TradeOfferManager from 'steam-tradeoffer-manager';
+import sleepasync from 'sleep-async';
 
 import Bot from './Bot';
 import CommandParser from './CommandParser';
@@ -59,6 +60,7 @@ const ADMIN_COMMANDS: string[] = [
     '!withdraw <param> - Used to withdraw items 📤',
     '!delete sku=<item sku> - Delete any item (use only sku) 🚮',
     '!pricecheck <param> - Requests an item to be priced by PricesTF ♻',
+    '!pricecheckall - Automatically request all items in your inventory.',
     '!check sku=<item sku> - Request current price for an item from Prices.TF',
     '!avatar <imageURL> - Change avatar 🛃',
     '!name <newName> - Change name 🆕',
@@ -183,6 +185,8 @@ export = class Commands {
             this.deleteCommand(steamID, message);
         } else if (command === 'pricecheck' && isAdmin) {
             this.pricecheckCommand(steamID, message);
+        } else if (command === 'pricecheckall' && isAdmin) {
+            this.pricecheckAllCommand(steamID);
         } else if (command === 'sales') {
             this.getSalesCommand(steamID, message);
         } else if (command === 'check' && isAdmin) {
@@ -1582,10 +1586,11 @@ export = class Commands {
         });
     }
 
-    private pricecheckAllCommand(steamID): void {
+    private async pricecheckAllCommand(steamID): Promise<void> {
         const pricelist = this.bot.pricelist.getPrices();
+
         const total = pricelist.length;
-        const totalTime = total * 5 * 1000;
+        const totalTime = total * 2 * 1000;
         this.bot.sendMessage(
             steamID,
             `⌛ Price check requested for ${total} items, will be done in approximately ${
@@ -1594,7 +1599,7 @@ export = class Commands {
                     : totalTime < 1 * 60 * 60 * 1000
                     ? `${Math.round(totalTime / (1 * 60 * 1000))} minutes.`
                     : `${Math.round(totalTime / (1 * 60 * 60 * 1000))} hours.`
-            } (every 5 seconds for each items).`
+            } (every 2 seconds for each items).`
         );
 
         const skus = pricelist.map(entry => entry.sku);
@@ -1602,7 +1607,8 @@ export = class Commands {
         let submitted = 0;
         let success = 0;
         let failed = 0;
-        skus.forEach(sku => {
+        for (const sku of skus) {
+            await sleepasync().Promise.sleep(2 * 1000);
             requestCheck(sku, 'bptf').asCallback(err => {
                 if (err) {
                     submitted++;
@@ -1623,16 +1629,14 @@ export = class Commands {
                         `pricecheck for ${sku} success, status: ${submitted}/${total}, ${success} success, ${failed} failed.`
                     );
                 }
-                if (submitted !== total) {
-                    this.sleep(5 * 1000);
-                } else {
+                if (submitted === total) {
                     this.bot.sendMessage(
                         steamID,
                         `✅ Successfully requested pricecheck for all ${total} ${pluralize('item', total)}!`
                     );
                 }
             });
-        });
+        }
     }
 
     private sleep(mili: number): void {

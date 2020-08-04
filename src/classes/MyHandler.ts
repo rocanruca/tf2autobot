@@ -75,15 +75,13 @@ export = class MyHandler extends Handler {
 
     private hasInvalidValueException = false;
 
-    private invalidItemsSKU: string[] = [];
-
-    private invalidItemsValue: string[] = [];
-
-    private overstockedItemsSKU: string[] = [];
-
-    private dupedItemsSKU: string[] = [];
-
-    private dupedFailedItemsSKU: string[] = [];
+    private reviewItems: {
+        invalidItemsSKU: string[];
+        invalidItemsValue: string[];
+        overstockedItemsSKU: string[];
+        dupedItemsSKU: string[];
+        dupedFailedItemsSKU: string[];
+    };
 
     private isTradingKeys = false;
 
@@ -721,7 +719,9 @@ export = class MyHandler extends Handler {
                             // User is taking too many / offering too many
                             hasOverstock = true;
 
-                            this.overstockedItemsSKU.push(sku);
+                            if (!['5021;6', '5000;6', '5001;6', '5002;6'].includes(sku)) {
+                                this.reviewItems.overstockedItemsSKU.push(sku);
+                            }
 
                             wrongAboutOffer.push({
                                 reason: '🟦OVERSTOCKED',
@@ -752,13 +752,15 @@ export = class MyHandler extends Handler {
                         // Offer contains an item that we are not trading
                         hasInvalidItems = true;
 
-                        this.invalidItemsSKU.push(sku);
+                        if (!['5021;6', '5000;6', '5001;6', '5002;6'].includes(sku)) {
+                            this.reviewItems.invalidItemsSKU.push(sku);
+                        }
 
                         await sleepasync().Promise.sleep(1 * 1000);
                         const price = await this.bot.pricelist.getPricesTF(sku);
 
                         if (price === null) {
-                            this.invalidItemsValue.push('No price');
+                            this.reviewItems.invalidItemsValue.push('No price');
                         } else {
                             price.buy = new Currencies(price.buy);
                             price.sell = new Currencies(price.sell);
@@ -771,7 +773,7 @@ export = class MyHandler extends Handler {
                             const itemSuggestedValue = Currencies.toCurrencies(
                                 price[intentString].toValue(keyPrice.metal)
                             );
-                            this.invalidItemsValue.push(itemSuggestedValue.toString());
+                            this.reviewItems.invalidItemsValue.push(itemSuggestedValue.toString());
                         }
 
                         wrongAboutOffer.push({
@@ -946,6 +948,9 @@ export = class MyHandler extends Handler {
             }
         } catch (err) {
             log.warn('Failed to check escrow: ', err);
+            wrongAboutOffer.push({
+                reason: '⬜STEAM_DOWN'
+            });
             const reasons = wrongAboutOffer.map(wrong => wrong.reason);
             const uniqueReasons = reasons.filter(reason => reasons.includes(reason));
 
@@ -970,6 +975,9 @@ export = class MyHandler extends Handler {
             }
         } catch (err) {
             log.warn('Failed to check banned: ', err);
+            wrongAboutOffer.push({
+                reason: '⬜BACKPACKTF_DOWN'
+            });
             const reasons = wrongAboutOffer.map(wrong => wrong.reason);
             const uniqueReasons = reasons.filter(reason => reasons.includes(reason));
 
@@ -1019,7 +1027,7 @@ export = class MyHandler extends Handler {
                             };
                         } else {
                             // Offer contains duped items but we don't decline duped items, instead add it to the wrong about offer list and continue
-                            this.dupedItemsSKU = skuToCheck;
+                            this.reviewItems.dupedItemsSKU = skuToCheck;
                             wrongAboutOffer.push({
                                 reason: '🟫DUPED_ITEMS',
                                 assetid: assetidsToCheck[i]
@@ -1027,7 +1035,7 @@ export = class MyHandler extends Handler {
                         }
                     } else if (result[i] === null) {
                         // Could not determine if the item was duped, make the offer be pending for review
-                        this.dupedFailedItemsSKU = skuToCheck;
+                        this.reviewItems.dupedFailedItemsSKU = skuToCheck;
                         wrongAboutOffer.push({
                             reason: '🟪DUPE_CHECK_FAILED',
                             assetid: assetidsToCheck[i]
@@ -1241,13 +1249,13 @@ export = class MyHandler extends Handler {
                 const isAcceptedInvalidItemsOverpay = this.isAcceptedWithInvalidItemsOrOverstocked;
 
                 if (isAcceptedInvalidItemsOverpay) {
-                    this.invalidItemsSKU.forEach(sku => {
+                    this.reviewItems.invalidItemsSKU.forEach(sku => {
                         const name = this.bot.schema.getName(SKU.fromString(sku), false);
                         invalidItemsName.push(name);
                     });
 
                     for (let i = 0; i < invalidItemsName.length; i++) {
-                        invalidItemsCombine.push(invalidItemsName[i] + ' - ' + this.invalidItemsValue[i]);
+                        invalidItemsCombine.push(invalidItemsName[i] + ' - ' + this.reviewItems.invalidItemsValue[i]);
                     }
                 }
 
@@ -1336,11 +1344,11 @@ export = class MyHandler extends Handler {
             this.sleep(2 * 1000);
 
             // clear/reset these in memory
-            this.invalidItemsSKU.length = 0;
-            this.invalidItemsValue.length = 0;
-            this.overstockedItemsSKU.length = 0;
-            this.dupedItemsSKU.length = 0;
-            this.dupedFailedItemsSKU.length = 0;
+            this.reviewItems.invalidItemsSKU.length = 0;
+            this.reviewItems.invalidItemsValue.length = 0;
+            this.reviewItems.overstockedItemsSKU.length = 0;
+            this.reviewItems.dupedItemsSKU.length = 0;
+            this.reviewItems.dupedFailedItemsSKU.length = 0;
         }
     }
 
@@ -1374,13 +1382,13 @@ export = class MyHandler extends Handler {
             const reasons = meta.uniqueReasons;
 
             if (reasons.includes('🟨INVALID_ITEMS')) {
-                this.invalidItemsSKU.forEach(sku => {
+                this.reviewItems.invalidItemsSKU.forEach(sku => {
                     const name = this.bot.schema.getName(SKU.fromString(sku), false);
                     invalidItemsName.push(name);
                 });
 
                 for (let i = 0; i < invalidItemsName.length; i++) {
-                    invalidItemsCombine.push(invalidItemsName[i] + ' - ' + this.invalidItemsValue[i]);
+                    invalidItemsCombine.push(invalidItemsName[i] + ' - ' + this.reviewItems.invalidItemsValue[i]);
                 }
 
                 note = process.env.INVALID_ITEMS_NOTE
@@ -1398,7 +1406,7 @@ export = class MyHandler extends Handler {
             }
 
             if (reasons.includes('🟦OVERSTOCKED')) {
-                this.overstockedItemsSKU.forEach(sku => {
+                this.reviewItems.overstockedItemsSKU.forEach(sku => {
                     const name = this.bot.schema.getName(SKU.fromString(sku), false);
                     overstockedItemsName.push(name);
                 });
@@ -1418,7 +1426,7 @@ export = class MyHandler extends Handler {
             }
 
             if (reasons.includes('🟫DUPED_ITEMS')) {
-                this.dupedItemsSKU.forEach(sku => {
+                this.reviewItems.dupedItemsSKU.forEach(sku => {
                     const name = this.bot.schema.getName(SKU.fromString(sku), false);
                     dupedItemsName.push(name);
                 });
@@ -1438,7 +1446,7 @@ export = class MyHandler extends Handler {
             }
 
             if (reasons.includes('🟪DUPE_CHECK_FAILED')) {
-                this.dupedFailedItemsSKU.forEach(sku => {
+                this.reviewItems.dupedFailedItemsSKU.forEach(sku => {
                     const name = this.bot.schema.getName(SKU.fromString(sku), false);
                     dupedFailedItemsName.push(name);
                 });
@@ -1576,11 +1584,11 @@ export = class MyHandler extends Handler {
                 );
             }
             // clear/reset these in memory
-            this.invalidItemsSKU.length = 0;
-            this.invalidItemsValue.length = 0;
-            this.overstockedItemsSKU.length = 0;
-            this.dupedItemsSKU.length = 0;
-            this.dupedFailedItemsSKU.length = 0;
+            this.reviewItems.invalidItemsSKU.length = 0;
+            this.reviewItems.invalidItemsValue.length = 0;
+            this.reviewItems.overstockedItemsSKU.length = 0;
+            this.reviewItems.dupedItemsSKU.length = 0;
+            this.reviewItems.dupedFailedItemsSKU.length = 0;
         }
     }
 

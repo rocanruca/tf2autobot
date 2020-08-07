@@ -1802,12 +1802,7 @@ export = class MyHandler extends Handler {
                 };
                 this.autokeysIsActive = true;
                 this.updateAutokeysBuy(userMinKeys, userMaxKeys);
-            } else if (
-                !isBankingBuyKeysWithEnoughRefs &&
-                !isEnableKeyBanking &&
-                isBuyingKeys &&
-                isAlreadyUpdatedToBuy !== true
-            ) {
+            } else if (!isEnableKeyBanking && isBuyingKeys && isAlreadyUpdatedToBuy !== true) {
                 // enable Autokeys - Buying - if buying keys conditions matched
                 this.autokeysStatus = {
                     isBuyingKeys: true,
@@ -1906,7 +1901,7 @@ export = class MyHandler extends Handler {
                     };
                     this.autokeysIsActive = true;
                     this.createAutokeysBuy(userMinKeys, userMaxKeys);
-                } else if (!isBankingBuyKeysWithEnoughRefs && !isEnableKeyBanking && isBuyingKeys) {
+                } else if (!isEnableKeyBanking && isBuyingKeys) {
                     // create new Key entry and enable Autokeys - Buying - if buying keys conditions matched
                     this.autokeysStatus = {
                         isBuyingKeys: true,
@@ -1979,12 +1974,7 @@ export = class MyHandler extends Handler {
                     };
                     this.autokeysIsActive = true;
                     this.updateAutokeysBuy(userMinKeys, userMaxKeys);
-                } else if (
-                    !isBankingBuyKeysWithEnoughRefs &&
-                    !isEnableKeyBanking &&
-                    isBuyingKeys &&
-                    isAlreadyUpdatedToBuy !== true
-                ) {
+                } else if (!isEnableKeyBanking && isBuyingKeys && isAlreadyUpdatedToBuy !== true) {
                     // enable Autokeys - Buying - if buying keys conditions matched
                     this.autokeysStatus = {
                         isBuyingKeys: true,

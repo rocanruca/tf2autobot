@@ -6,6 +6,7 @@ import log from '../lib/logger';
 import Currencies from 'tf2-currencies';
 import { parseJSON } from '../lib/helpers';
 import MyHandler from './MyHandler';
+import SKU from 'tf2-sku';
 
 export = class DiscordWebhook {
     private readonly bot: Bot;
@@ -165,7 +166,7 @@ export = class DiscordWebhook {
         keyPrice: { buy: Currencies; sell: Currencies },
         value: { diff: number; diffRef: number; diffKey: string },
         links: { steamProfile: string; backpackTF: string; steamREP: string },
-        invalidItemsName: string[],
+        invalidItemsCombine: string[],
         overstockedItemsName: string[],
         dupedItemsName: string[],
         dupedFailedItemsName: string[]
@@ -197,10 +198,13 @@ export = class DiscordWebhook {
         const message = offerMessage
             .replace(/_/g, '‗')
             .replace(/\*/g, '★')
-            .replace(/~/g, '⁓')
-            .replace(/`/g, '^')
-            .replace(/>/g, '<')
-            .replace(/\|/g, '!')
+            .replace(/~/g, '💫')
+            .replace(/`/g, '💫')
+            .replace(/>/g, '💫')
+            .replace(/\|/g, '💫')
+            .replace(/\\/g, '💫')
+            .replace(/\(/g, '💫')
+            .replace(/\(/g, '💫')
             .replace(/\[/g, '💫')
             .replace(/\]/g, '💫');
 
@@ -222,10 +226,13 @@ export = class DiscordWebhook {
             const partnerNameNoFormat = partnerName
                 .replace(/_/g, '‗')
                 .replace(/\*/g, '★')
-                .replace(/~/g, '⁓')
-                .replace(/`/g, '^')
-                .replace(/>/g, '<')
-                .replace(/\|/g, '!')
+                .replace(/~/g, '💫')
+                .replace(/`/g, '💫')
+                .replace(/>/g, '💫')
+                .replace(/\|/g, '💫')
+                .replace(/\\/g, '💫')
+                .replace(/\(/g, '💫')
+                .replace(/\(/g, '💫')
                 .replace(/\[/g, '💫')
                 .replace(/\]/g, '💫');
 
@@ -259,7 +266,7 @@ export = class DiscordWebhook {
                                 : reasons.includes('⬜STEAM_DOWN')
                                 ? '\n\nSteam down, please manually check if this person have escrow.'
                                 : '') +
-                            `\n\n__Offer Summary__:\n` +
+                            `\n\n__**Offer Summary**__\n` +
                             tradeSummary.replace('Asked:', '**Asked:**').replace('Offered:', '**Offered:**') +
                             (value.diff > 0
                                 ? `\n📈 ***Profit from overpay:*** ${value.diffRef} ref` +
@@ -270,24 +277,24 @@ export = class DiscordWebhook {
                                 : '') +
                             (offerMessage.length !== 0 ? `\n\n💬 Offer message: _${message}_` : '') +
                             `${
-                                invalidItemsName.length !== 0
-                                    ? `\n\n🟨INVALID_ITEMS - ${invalidItemsName.join(',\n')}`
+                                invalidItemsCombine.length !== 0
+                                    ? `\n\n🟨INVALID_ITEMS - ${invalidItemsCombine.join(',\n ')}`
                                     : ''
                             }${
-                                invalidItemsName.length !== 0 && overstockedItemsName.length !== 0
+                                invalidItemsCombine.length !== 0 && overstockedItemsName.length !== 0
                                     ? `\n🟦OVERSTOCKED - ${overstockedItemsName.join(', ')}`
                                     : overstockedItemsName.length !== 0
                                     ? `\n\n🟦OVERSTOCKED - ${overstockedItemsName.join(', ')}`
                                     : ''
                             }${
-                                (invalidItemsName.length !== 0 || overstockedItemsName.length !== 0) &&
+                                (invalidItemsCombine.length !== 0 || overstockedItemsName.length !== 0) &&
                                 dupedItemsName.length !== 0
                                     ? `\n🟫DUPED_ITEMS - ${dupedItemsName.join(', ')}`
                                     : dupedItemsName.length !== 0
                                     ? `\n\n🟫DUPED_ITEMS - ${dupedItemsName.join(', ')}`
                                     : ''
                             }${
-                                (invalidItemsName.length !== 0 ||
+                                (invalidItemsCombine.length !== 0 ||
                                     overstockedItemsName.length !== 0 ||
                                     dupedItemsName.length !== 0) &&
                                 dupedFailedItemsName.length !== 0
@@ -301,7 +308,7 @@ export = class DiscordWebhook {
                                 : '\n'),
                         fields: [
                             {
-                                name: 'Status',
+                                name: '**Status**',
                                 value:
                                     (isShowKeyRate
                                         ? `\n🔑 Key rate: ${keyPrice.buy.metal.toString()}/${keyPrice.sell.metal.toString()} ref`
@@ -381,6 +388,30 @@ export = class DiscordWebhook {
             );
         }
 
+        const invalidItems = theirItemsSecondFiltered.concat(ourItemsSecondFiltered);
+        const invalidItemsName: string[] = [];
+        invalidItems.forEach(sku => {
+            invalidItemsName.push(
+                this.bot.schema
+                    .getName(SKU.fromString(sku), false)
+                    .replace(/Non-Craftable/g, 'NC')
+                    .replace(/Professional Killstreak/g, 'Pro KS')
+                    .replace(/Specialized Killstreak/g, 'Spec KS')
+                    .replace(/Killstreak/g, 'KS')
+            );
+        });
+
+        const invalidItemsFromMyHandler: string[] = [];
+        invalidItemsCombine.forEach(name => {
+            invalidItemsFromMyHandler.push(
+                name
+                    .replace(/Non-Craftable/g, 'NC')
+                    .replace(/Professional Killstreak/g, 'Pro KS')
+                    .replace(/Specialized Killstreak/g, 'Spec KS')
+                    .replace(/Killstreak/g, 'KS')
+            );
+        });
+
         const isMentionInvalidItemsOurSide = ourItemsSecondFiltered.some((sku: string) => {
             if (ourItemsSecondFiltered.length > 0) {
                 return this.bot.pricelist.getPrice(sku, false) === null;
@@ -424,10 +455,13 @@ export = class DiscordWebhook {
             const partnerNameNoFormat = personaName
                 .replace(/_/g, '‗')
                 .replace(/\*/g, '★')
-                .replace(/~/g, '⁓')
-                .replace(/`/g, '^')
-                .replace(/>/g, '<')
-                .replace(/\|/g, '!')
+                .replace(/~/g, '💫')
+                .replace(/`/g, '💫')
+                .replace(/>/g, '💫')
+                .replace(/\|/g, '💫')
+                .replace(/\\/g, '💫')
+                .replace(/\(/g, '💫')
+                .replace(/\(/g, '💫')
                 .replace(/\[/g, '💫')
                 .replace(/\]/g, '💫');
 
@@ -457,7 +491,7 @@ export = class DiscordWebhook {
                         },
                         title: '',
                         description:
-                            `__Summary__:\n` +
+                            `__**Summary**__\n` +
                             tradeSummary.replace('Asked:', '**Asked:**').replace('Offered:', '**Offered:**') +
                             (value.diff > 0
                                 ? `\n📈 ***Profit from overpay:*** ${value.diffRef} ref` +
@@ -471,10 +505,16 @@ export = class DiscordWebhook {
                                 : '\n'),
                         fields: [
                             {
-                                name: 'Status',
+                                name: '__Status__',
                                 value:
+                                    (isShowQuickLinks
+                                        ? `\n\n🔍 ${partnerNameNoFormat}'s info:\n[Steam Profile](${links.steamProfile}) | [backpack.tf](${links.backpackTF}) | [steamREP](${links.steamREP})\n`
+                                        : '\n') +
                                     (isMentionInvalidItems
-                                        ? '\n\n🟨INVALID_ITEMS:\n' + invalidItemsCombine.join(',\n')
+                                        ? '\n\n🟨INVALID_ITEMS:\n' +
+                                          (invalidItemsCombine.length === 0
+                                              ? invalidItemsName.join(',\n')
+                                              : invalidItemsFromMyHandler.join(',\n'))
                                         : '') +
                                     (isShowKeyRate
                                         ? `\n🔑 Key rate: ${keyPrice.buy.metal.toString()}/${keyPrice.sell.metal.toString()} ref` +
@@ -499,7 +539,7 @@ export = class DiscordWebhook {
                                         : '')
                             },
                             {
-                                name: 'Notes',
+                                name: '__Notes__',
                                 value: AdditionalNotes ? '\n' + AdditionalNotes : '-'
                             }
                         ],
@@ -509,6 +549,8 @@ export = class DiscordWebhook {
             });
             /*eslint-enable */
             request.send(acceptedTradeSummary);
+            invalidItemsName.length = 0;
+            invalidItemsFromMyHandler.length = 0;
         });
     }
 

@@ -95,6 +95,13 @@ export = class MyHandler extends Handler {
 
     private autoRelistNotBuyingKeys = 0;
 
+    private oldAmount = {
+        keysCanBuy: 0,
+        keysCanSell: 0,
+        keysCanBank: 0,
+        ofKeys: 0
+    };
+
     private customGameName: string;
 
     private isUsingAutoPrice = true;
@@ -350,7 +357,7 @@ export = class MyHandler extends Handler {
 
             if (process.env.ENABLE_AUTO_SELL_AND_BUY_KEYS === 'true' && this.autokeysIsActive === true) {
                 log.debug('Disabling autokeys and removing key from pricelist...');
-                this.removeAutoKeys();
+                this.updateToDisableAutokeys();
             }
 
             this.bot.listings.removeAll().asCallback(function(err) {
@@ -1772,13 +1779,60 @@ export = class MyHandler extends Handler {
                 }`
         );
 
+        let setMinKeys: number;
+        let setMaxKeys: number;
+        const amountKeysCanBuy = (currReftoScrap - userMaxReftoScrap) / currKeyPrice.buy.toValue();
+        const amountKeysCanSell = (userMinReftoScrap - currReftoScrap) / currKeyPrice.sell.toValue();
+        const amountKeysCanBank = (currReftoScrap - userMinReftoScrap) / currKeyPrice.buy.toValue();
+        const truncedAmountKeysCanBuy = Math.trunc(amountKeysCanBuy);
+        const truncedAmountKeysCanSell = Math.trunc(amountKeysCanSell);
+        const truncedAmountKeysCanBank = Math.trunc(amountKeysCanBank);
+
+        if ((isBankingBuyKeysWithEnoughRefs && isEnableKeyBanking) || isBuyingKeys) {
+            if (amountKeysCanBuy <= 1) {
+                setMinKeys = currKeys;
+                setMaxKeys = currKeys + 1;
+            } else {
+                setMinKeys = currKeys;
+                setMaxKeys = currKeys + 1 + truncedAmountKeysCanBuy;
+            }
+        } else if (isSellingKeys) {
+            if (amountKeysCanSell <= 1) {
+                setMinKeys = currKeys - 1;
+                setMaxKeys = userMinKeys;
+            } else {
+                setMinKeys = currKeys - 1 - truncedAmountKeysCanSell;
+                setMaxKeys = userMinKeys;
+            }
+        } else if (isBankingKeys) {
+            if (amountKeysCanBank <= 1) {
+                setMinKeys = currKeys - 1 <= userMinKeys ? userMinKeys : currKeys - 1;
+                setMaxKeys = currKeys + 1 >= userMaxKeys ? userMaxKeys : currKeys + 1;
+            } else {
+                setMinKeys =
+                    currKeys - 1 - truncedAmountKeysCanBank <= userMinKeys
+                        ? userMinKeys
+                        : currKeys - 1 - truncedAmountKeysCanBank;
+                setMaxKeys =
+                    currKeys + 1 + truncedAmountKeysCanBank >= userMaxKeys
+                        ? userMaxKeys
+                        : currKeys + 1 + truncedAmountKeysCanBank;
+            }
+        }
+
         const isAlreadyRunningAutokeys = this.autokeysIsActive !== false;
         const isKeysAlreadyExist = this.bot.pricelist.searchByName('Mann Co. Supply Crate Key', false);
         const time = this.timeWithEmoji();
 
         if (isAlreadyRunningAutokeys) {
             // if Autokeys already running
-            if (isBankingKeys && isEnableKeyBanking && isAlreadyUpdatedToBank !== true) {
+            if (
+                isBankingKeys &&
+                isEnableKeyBanking &&
+                (isAlreadyUpdatedToBank !== true ||
+                    truncedAmountKeysCanBank !== this.oldAmount.keysCanBank ||
+                    currKeys !== this.oldAmount.ofKeys)
+            ) {
                 // enable keys banking - if banking conditions to enable banking matched and banking is enabled
                 this.autokeysStatus = {
                     isBuyingKeys: false,
@@ -1788,9 +1842,21 @@ export = class MyHandler extends Handler {
                     alreadyUpdatedToBuy: false,
                     alreadyUpdatedToSell: false
                 };
+                this.oldAmount = {
+                    keysCanSell: 0,
+                    keysCanBuy: 0,
+                    keysCanBank: truncedAmountKeysCanBank,
+                    ofKeys: currKeys
+                };
                 this.autokeysIsActive = true;
-                this.updateAutokeysBanking(userMinKeys, userMaxKeys);
-            } else if (isBankingBuyKeysWithEnoughRefs && isEnableKeyBanking && isAlreadyUpdatedToBuy !== true) {
+                this.updateAutokeysBanking(setMinKeys, setMaxKeys);
+            } else if (
+                isBankingBuyKeysWithEnoughRefs &&
+                isEnableKeyBanking &&
+                (isAlreadyUpdatedToBuy !== true ||
+                    truncedAmountKeysCanBuy !== this.oldAmount.keysCanBuy ||
+                    currKeys !== this.oldAmount.ofKeys)
+            ) {
                 // enable keys banking - if refs > minRefs but Keys < minKeys, will buy keys.
                 this.autokeysStatus = {
                     isBuyingKeys: true,
@@ -1800,9 +1866,21 @@ export = class MyHandler extends Handler {
                     alreadyUpdatedToBuy: true,
                     alreadyUpdatedToSell: false
                 };
+                this.oldAmount = {
+                    keysCanSell: 0,
+                    keysCanBuy: truncedAmountKeysCanBuy,
+                    keysCanBank: 0,
+                    ofKeys: currKeys
+                };
                 this.autokeysIsActive = true;
-                this.updateAutokeysBuy(userMinKeys, userMaxKeys);
-            } else if (!isEnableKeyBanking && isBuyingKeys && isAlreadyUpdatedToBuy !== true) {
+                this.updateAutokeysBuy(setMinKeys, setMaxKeys);
+            } else if (
+                !isEnableKeyBanking &&
+                isBuyingKeys &&
+                (isAlreadyUpdatedToBuy !== true ||
+                    truncedAmountKeysCanBuy !== this.oldAmount.keysCanBuy ||
+                    currKeys !== this.oldAmount.ofKeys)
+            ) {
                 // enable Autokeys - Buying - if buying keys conditions matched
                 this.autokeysStatus = {
                     isBuyingKeys: true,
@@ -1812,9 +1890,20 @@ export = class MyHandler extends Handler {
                     alreadyUpdatedToBuy: true,
                     alreadyUpdatedToSell: false
                 };
+                this.oldAmount = {
+                    keysCanSell: 0,
+                    keysCanBuy: truncedAmountKeysCanBuy,
+                    keysCanBank: 0,
+                    ofKeys: currKeys
+                };
                 this.autokeysIsActive = true;
-                this.updateAutokeysBuy(userMinKeys, userMaxKeys);
-            } else if (isSellingKeys && isAlreadyUpdatedToSell !== true) {
+                this.updateAutokeysBuy(setMinKeys, setMaxKeys);
+            } else if (
+                isSellingKeys &&
+                (isAlreadyUpdatedToSell !== true ||
+                    truncedAmountKeysCanSell !== this.oldAmount.keysCanSell ||
+                    currKeys !== this.oldAmount.ofKeys)
+            ) {
                 // enable Autokeys - Selling - if selling keys conditions matched
                 this.autokeysStatus = {
                     isBuyingKeys: false,
@@ -1824,8 +1913,14 @@ export = class MyHandler extends Handler {
                     alreadyUpdatedToBuy: false,
                     alreadyUpdatedToSell: true
                 };
+                this.oldAmount = {
+                    keysCanSell: truncedAmountKeysCanSell,
+                    keysCanBuy: 0,
+                    keysCanBank: 0,
+                    ofKeys: currKeys
+                };
                 this.autokeysIsActive = true;
-                this.updateAutokeysSell(userMinKeys, userMaxKeys);
+                this.updateAutokeysSell(setMinKeys, setMaxKeys);
             } else if (isRemoveBankingKeys && isEnableKeyBanking) {
                 // disable keys banking - if to conditions to disable banking matched and banking is enabled
                 this.autokeysStatus = {
@@ -1837,7 +1932,7 @@ export = class MyHandler extends Handler {
                     alreadyUpdatedToSell: false
                 };
                 this.autokeysIsActive = false;
-                this.removeAutoKeys();
+                this.updateToDisableAutokeys();
             } else if (isRemoveAutoKeys && !isEnableKeyBanking) {
                 // disable Autokeys when conditions to disable Autokeys matched
                 this.autokeysStatus = {
@@ -1849,7 +1944,7 @@ export = class MyHandler extends Handler {
                     alreadyUpdatedToSell: false
                 };
                 this.autokeysIsActive = false;
-                this.removeAutoKeys();
+                this.updateToDisableAutokeys();
             } else if (isAlertAdmins && isAlreadyAlert !== true) {
                 // alert admins when low pure
                 this.autokeysStatus = {
@@ -1887,8 +1982,14 @@ export = class MyHandler extends Handler {
                         alreadyUpdatedToBuy: false,
                         alreadyUpdatedToSell: false
                     };
+                    this.oldAmount = {
+                        keysCanSell: 0,
+                        keysCanBuy: 0,
+                        keysCanBank: truncedAmountKeysCanBank,
+                        ofKeys: currKeys
+                    };
                     this.autokeysIsActive = true;
-                    this.createAutokeysBanking(userMinKeys, userMaxKeys);
+                    this.createAutokeysBanking(setMinKeys, setMaxKeys);
                 } else if (isBankingBuyKeysWithEnoughRefs && isEnableKeyBanking) {
                     // enable keys banking - if refs > minRefs but Keys < minKeys, will buy keys.
                     this.autokeysStatus = {
@@ -1899,8 +2000,14 @@ export = class MyHandler extends Handler {
                         alreadyUpdatedToBuy: true,
                         alreadyUpdatedToSell: false
                     };
+                    this.oldAmount = {
+                        keysCanSell: 0,
+                        keysCanBuy: truncedAmountKeysCanBuy,
+                        keysCanBank: 0,
+                        ofKeys: currKeys
+                    };
                     this.autokeysIsActive = true;
-                    this.createAutokeysBuy(userMinKeys, userMaxKeys);
+                    this.createAutokeysBuy(setMinKeys, setMaxKeys);
                 } else if (!isEnableKeyBanking && isBuyingKeys) {
                     // create new Key entry and enable Autokeys - Buying - if buying keys conditions matched
                     this.autokeysStatus = {
@@ -1911,8 +2018,14 @@ export = class MyHandler extends Handler {
                         alreadyUpdatedToBuy: true,
                         alreadyUpdatedToSell: false
                     };
+                    this.oldAmount = {
+                        keysCanSell: 0,
+                        keysCanBuy: truncedAmountKeysCanBuy,
+                        keysCanBank: 0,
+                        ofKeys: currKeys
+                    };
                     this.autokeysIsActive = true;
-                    this.createAutokeysBuy(userMinKeys, userMaxKeys);
+                    this.createAutokeysBuy(setMinKeys, setMaxKeys);
                 } else if (isSellingKeys) {
                     // create new Key entry and enable Autokeys - Selling - if selling keys conditions matched
                     this.autokeysStatus = {
@@ -1923,8 +2036,14 @@ export = class MyHandler extends Handler {
                         alreadyUpdatedToBuy: false,
                         alreadyUpdatedToSell: true
                     };
+                    this.oldAmount = {
+                        keysCanSell: truncedAmountKeysCanSell,
+                        keysCanBuy: 0,
+                        keysCanBank: 0,
+                        ofKeys: currKeys
+                    };
                     this.autokeysIsActive = true;
-                    this.createAutokeysSell(userMinKeys, userMaxKeys);
+                    this.createAutokeysSell(setMinKeys, setMaxKeys);
                 } else if (isAlertAdmins && isAlreadyAlert !== true) {
                     // alert admins when low pure
                     this.autokeysStatus = {
@@ -1950,7 +2069,13 @@ export = class MyHandler extends Handler {
                 }
             } else {
                 // if Mann Co. Supply Crate Key entry already in the pricelist.json
-                if (isBankingKeys && isEnableKeyBanking && isAlreadyUpdatedToBank !== true) {
+                if (
+                    isBankingKeys &&
+                    isEnableKeyBanking &&
+                    (isAlreadyUpdatedToBank !== true ||
+                        truncedAmountKeysCanBank !== this.oldAmount.keysCanBank ||
+                        currKeys !== this.oldAmount.ofKeys)
+                ) {
                     // enable keys banking - if banking conditions to enable banking matched and banking is enabled
                     this.autokeysStatus = {
                         isBuyingKeys: false,
@@ -1960,9 +2085,21 @@ export = class MyHandler extends Handler {
                         alreadyUpdatedToBuy: false,
                         alreadyUpdatedToSell: false
                     };
+                    this.oldAmount = {
+                        keysCanSell: 0,
+                        keysCanBuy: 0,
+                        keysCanBank: truncedAmountKeysCanBank,
+                        ofKeys: currKeys
+                    };
                     this.autokeysIsActive = true;
-                    this.updateAutokeysBanking(userMinKeys, userMaxKeys);
-                } else if (isBankingBuyKeysWithEnoughRefs && isEnableKeyBanking && isAlreadyUpdatedToBuy !== true) {
+                    this.updateAutokeysBanking(setMinKeys, setMaxKeys);
+                } else if (
+                    isBankingBuyKeysWithEnoughRefs &&
+                    isEnableKeyBanking &&
+                    (isAlreadyUpdatedToBuy !== true ||
+                        truncedAmountKeysCanBuy !== this.oldAmount.keysCanBuy ||
+                        currKeys !== this.oldAmount.ofKeys)
+                ) {
                     // enable keys banking - if refs > minRefs but Keys < minKeys, will buy keys.
                     this.autokeysStatus = {
                         isBuyingKeys: true,
@@ -1972,9 +2109,21 @@ export = class MyHandler extends Handler {
                         alreadyUpdatedToBuy: true,
                         alreadyUpdatedToSell: false
                     };
+                    this.oldAmount = {
+                        keysCanSell: 0,
+                        keysCanBuy: truncedAmountKeysCanBuy,
+                        keysCanBank: 0,
+                        ofKeys: currKeys
+                    };
                     this.autokeysIsActive = true;
-                    this.updateAutokeysBuy(userMinKeys, userMaxKeys);
-                } else if (!isEnableKeyBanking && isBuyingKeys && isAlreadyUpdatedToBuy !== true) {
+                    this.updateAutokeysBuy(setMinKeys, setMaxKeys);
+                } else if (
+                    !isEnableKeyBanking &&
+                    isBuyingKeys &&
+                    (isAlreadyUpdatedToBuy !== true ||
+                        truncedAmountKeysCanBuy !== this.oldAmount.keysCanBuy ||
+                        currKeys !== this.oldAmount.ofKeys)
+                ) {
                     // enable Autokeys - Buying - if buying keys conditions matched
                     this.autokeysStatus = {
                         isBuyingKeys: true,
@@ -1984,9 +2133,20 @@ export = class MyHandler extends Handler {
                         alreadyUpdatedToBuy: true,
                         alreadyUpdatedToSell: false
                     };
+                    this.oldAmount = {
+                        keysCanSell: 0,
+                        keysCanBuy: truncedAmountKeysCanBuy,
+                        keysCanBank: 0,
+                        ofKeys: currKeys
+                    };
                     this.autokeysIsActive = true;
-                    this.updateAutokeysBuy(userMinKeys, userMaxKeys);
-                } else if (isSellingKeys && isAlreadyUpdatedToSell !== true) {
+                    this.updateAutokeysBuy(setMinKeys, setMaxKeys);
+                } else if (
+                    isSellingKeys &&
+                    (isAlreadyUpdatedToSell !== true ||
+                        truncedAmountKeysCanSell !== this.oldAmount.keysCanSell ||
+                        currKeys !== this.oldAmount.ofKeys)
+                ) {
                     // enable Autokeys - Selling - if selling keys conditions matched
                     this.autokeysStatus = {
                         isBuyingKeys: false,
@@ -1996,8 +2156,14 @@ export = class MyHandler extends Handler {
                         alreadyUpdatedToBuy: false,
                         alreadyUpdatedToSell: true
                     };
+                    this.oldAmount = {
+                        keysCanSell: truncedAmountKeysCanSell,
+                        keysCanBuy: 0,
+                        keysCanBank: 0,
+                        ofKeys: currKeys
+                    };
                     this.autokeysIsActive = true;
-                    this.updateAutokeysSell(userMinKeys, userMaxKeys);
+                    this.updateAutokeysSell(setMinKeys, setMaxKeys);
                 } else if (isAlertAdmins && isAlreadyAlert !== true) {
                     // alert admins when low pure
                     this.autokeysStatus = {
@@ -2023,9 +2189,10 @@ export = class MyHandler extends Handler {
                 }
             }
         }
+        this.bot.listings.checkBySKU('5021;6');
     }
 
-    private createAutokeysSell(userMinKeys: number, userMaxKeys: number): void {
+    private createAutokeysSell(minKeys: number, maxKeys: number): void {
         const keyPrices = this.bot.pricelist.getKeyPrices();
         let entry;
         if (this.isUsingAutoPrice) {
@@ -2033,8 +2200,8 @@ export = class MyHandler extends Handler {
                 sku: '5021;6',
                 enabled: true,
                 autoprice: true,
-                max: userMaxKeys,
-                min: userMinKeys,
+                min: minKeys,
+                max: maxKeys,
                 intent: 1
             } as any;
         } else {
@@ -2050,26 +2217,24 @@ export = class MyHandler extends Handler {
                     keys: 0,
                     metal: Currencies.toRefined(keyPrices.buy.toValue() - this.scrapAdjustmentValue)
                 },
-                max: userMaxKeys,
-                min: userMinKeys,
+                min: minKeys,
+                max: maxKeys,
                 intent: 1
             } as any;
         }
         this.bot.pricelist
-            .addPrice(entry as EntryData, true)
-            .then(() => {
+            .addPrice(entry as EntryData, false)
+            .then(data => {
                 log.debug(`✅ Automatically added Mann Co. Supply Crate Key to sell.`);
+                this.bot.listings.checkBySKU(data.sku, data);
             })
             .catch(err => {
                 log.warn(`❌ Failed to add Mann Co. Supply Crate Key to sell automatically: ${err.message}`);
                 this.autokeysIsActive = false;
-            })
-            .finally(() => {
-                this.bot.listings.checkBySKU('5021;6');
             });
     }
 
-    private createAutokeysBuy(userMinKeys: number, userMaxKeys: number): void {
+    private createAutokeysBuy(minKeys: number, maxKeys: number): void {
         const keyPrices = this.bot.pricelist.getKeyPrices();
         let entry;
         if (this.isUsingAutoPrice) {
@@ -2077,8 +2242,8 @@ export = class MyHandler extends Handler {
                 sku: '5021;6',
                 enabled: true,
                 autoprice: true,
-                max: userMaxKeys,
-                min: userMinKeys,
+                min: minKeys,
+                max: maxKeys,
                 intent: 0
             } as any;
         } else {
@@ -2094,45 +2259,41 @@ export = class MyHandler extends Handler {
                     keys: 0,
                     metal: Currencies.toRefined(keyPrices.buy.toValue() + this.scrapAdjustmentValue)
                 },
-                max: userMaxKeys,
-                min: userMinKeys,
+                min: minKeys,
+                max: maxKeys,
                 intent: 0
             } as any;
         }
         this.bot.pricelist
-            .addPrice(entry as EntryData, true)
-            .then(() => {
+            .addPrice(entry as EntryData, false)
+            .then(data => {
                 log.debug(`✅ Automatically added Mann Co. Supply Crate Key to buy.`);
+                this.bot.listings.checkBySKU(data.sku, data);
             })
             .catch(err => {
                 log.warn(`❌ Failed to add Mann Co. Supply Crate Key to buy automatically: ${err.message}`);
                 this.autokeysIsActive = false;
-            })
-            .finally(() => {
-                this.bot.listings.checkBySKU('5021;6');
             });
     }
 
-    private createAutokeysBanking(userMinKeys: number, userMaxKeys: number): void {
+    private createAutokeysBanking(minKeys: number, maxKeys: number): void {
         const entry = {
             sku: '5021;6',
             enabled: true,
             autoprice: true,
-            max: userMaxKeys,
-            min: userMinKeys,
+            min: minKeys,
+            max: maxKeys,
             intent: 2
         } as any;
         this.bot.pricelist
-            .addPrice(entry as EntryData, true)
-            .then(() => {
+            .addPrice(entry as EntryData, false)
+            .then(data => {
                 log.debug(`✅ Automatically added Mann Co. Supply Crate Key to bank.`);
+                this.bot.listings.checkBySKU(data.sku, data);
             })
             .catch(err => {
                 log.warn(`❌ Failed to add Mann Co. Supply Crate Key to bank automatically: ${err.message}`);
                 this.autokeysIsActive = false;
-            })
-            .finally(() => {
-                this.bot.listings.checkBySKU('5021;6');
             });
     }
 
@@ -2141,25 +2302,23 @@ export = class MyHandler extends Handler {
             sku: '5021;6',
             enabled: false,
             autoprice: true,
-            max: 1,
             min: 0,
+            max: 1,
             intent: 1
         } as any;
         this.bot.pricelist
-            .updatePrice(entry as EntryData, true)
-            .then(() => {
+            .updatePrice(entry as EntryData, false)
+            .then(data => {
                 log.debug(`✅ Automatically disabled Autokeys.`);
+                this.bot.listings.checkBySKU(data.sku, data);
             })
             .catch(err => {
                 log.warn(`❌ Failed to disable Autokeys: ${err.message}`);
                 this.autokeysIsActive = true;
-            })
-            .finally(() => {
-                this.bot.listings.checkBySKU('5021;6');
             });
     }
 
-    private updateAutokeysSell(userMinKeys: number, userMaxKeys: number): void {
+    private updateAutokeysSell(minKeys: number, maxKeys: number): void {
         const keyPrices = this.bot.pricelist.getKeyPrices();
         let entry;
         if (this.isUsingAutoPrice) {
@@ -2167,8 +2326,8 @@ export = class MyHandler extends Handler {
                 sku: '5021;6',
                 enabled: true,
                 autoprice: true,
-                max: userMaxKeys,
-                min: userMinKeys,
+                min: minKeys,
+                max: maxKeys,
                 intent: 1
             } as any;
         } else {
@@ -2184,26 +2343,24 @@ export = class MyHandler extends Handler {
                     keys: 0,
                     metal: Currencies.toRefined(keyPrices.buy.toValue() - this.scrapAdjustmentValue)
                 },
-                max: userMaxKeys,
-                min: userMinKeys,
+                min: minKeys,
+                max: maxKeys,
                 intent: 1
             } as any;
         }
         this.bot.pricelist
-            .updatePrice(entry as EntryData, true)
-            .then(() => {
+            .updatePrice(entry as EntryData, false)
+            .then(data => {
                 log.debug(`✅ Automatically updated Mann Co. Supply Crate Key to sell.`);
+                this.bot.listings.checkBySKU(data.sku, data);
             })
             .catch(err => {
                 log.warn(`❌ Failed to update Mann Co. Supply Crate Key to sell automatically: ${err.message}`);
                 this.autokeysIsActive = false;
-            })
-            .finally(() => {
-                this.bot.listings.checkBySKU('5021;6');
             });
     }
 
-    private updateAutokeysBuy(userMinKeys: number, userMaxKeys: number): void {
+    private updateAutokeysBuy(minKeys: number, maxKeys: number): void {
         const keyPrices = this.bot.pricelist.getKeyPrices();
         let entry;
         if (this.isUsingAutoPrice) {
@@ -2211,8 +2368,8 @@ export = class MyHandler extends Handler {
                 sku: '5021;6',
                 enabled: true,
                 autoprice: true,
-                max: userMaxKeys,
-                min: userMinKeys,
+                min: minKeys,
+                max: maxKeys,
                 intent: 0
             } as any;
         } else {
@@ -2228,60 +2385,54 @@ export = class MyHandler extends Handler {
                     keys: 0,
                     metal: Currencies.toRefined(keyPrices.buy.toValue() + this.scrapAdjustmentValue)
                 },
-                max: userMaxKeys,
-                min: userMinKeys,
+                min: minKeys,
+                max: maxKeys,
                 intent: 0
             } as any;
         }
         this.bot.pricelist
-            .updatePrice(entry as EntryData, true)
-            .then(() => {
+            .updatePrice(entry as EntryData, false)
+            .then(data => {
                 log.debug(`✅ Automatically update Mann Co. Supply Crate Key to buy.`);
+                this.bot.listings.checkBySKU(data.sku, data);
             })
             .catch(err => {
                 log.warn(`❌ Failed to update Mann Co. Supply Crate Key to buy automatically: ${err.message}`);
                 this.autokeysIsActive = false;
-            })
-            .finally(() => {
-                this.bot.listings.checkBySKU('5021;6');
             });
     }
 
-    private updateAutokeysBanking(userMinKeys: number, userMaxKeys: number): void {
+    private updateAutokeysBanking(minKeys: number, maxKeys: number): void {
         const entry = {
             sku: '5021;6',
             enabled: true,
             autoprice: true,
-            max: userMaxKeys,
-            min: userMinKeys,
+            min: minKeys,
+            max: maxKeys,
             intent: 2
         } as any;
         this.bot.pricelist
-            .updatePrice(entry as EntryData, true)
-            .then(() => {
+            .updatePrice(entry as EntryData, false)
+            .then(data => {
                 log.debug(`✅ Automatically updated Mann Co. Supply Crate Key to bank.`);
+                this.bot.listings.checkBySKU(data.sku, data);
             })
             .catch(err => {
                 log.warn(`❌ Failed to update Mann Co. Supply Crate Key to bank automatically: ${err.message}`);
                 this.autokeysIsActive = false;
-            })
-            .finally(() => {
-                this.bot.listings.checkBySKU('5021;6');
             });
     }
 
     private removeAutoKeys(): void {
         this.bot.pricelist
-            .removePrice('5021;6', true)
+            .removePrice('5021;6', false)
             .then(() => {
                 log.debug(`✅ Automatically remove Mann Co. Supply Crate Key.`);
+                this.bot.listings.checkBySKU('5021;6');
             })
             .catch(err => {
                 log.warn(`❌ Failed to remove Mann Co. Supply Crate Key automatically: ${err.message}`);
                 this.autokeysIsActive = true;
-            })
-            .finally(() => {
-                this.bot.listings.checkBySKU('5021;6');
             });
     }
 

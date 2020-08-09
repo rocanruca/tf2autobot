@@ -105,7 +105,7 @@ export = class MyHandler extends Handler {
 
     private customGameName: string;
 
-    private isUsingAutoPrice = true;
+    private isEnableScrapAdjustment = false;
 
     private scrapAdjustmentValue = 0;
 
@@ -178,7 +178,7 @@ export = class MyHandler extends Handler {
         }
 
         if (process.env.DISABLE_SCRAP_ADJUSTMENT !== 'true') {
-            this.isUsingAutoPrice = false;
+            this.isEnableScrapAdjustment = true;
         }
 
         if (!isNaN(minimumScrap)) {
@@ -282,7 +282,7 @@ export = class MyHandler extends Handler {
             isBuying: status.isBuyingKeys,
             bankingEnabled: this.keyBankingEnabled,
             isBanking: status.isBankingKeys,
-            scrapAdjustmentEnabled: !this.isUsingAutoPrice,
+            scrapAdjustmentEnabled: this.isEnableScrapAdjustment,
             scrapAdjustmentValue: this.scrapAdjustmentValue
         };
         return settings;
@@ -1651,7 +1651,7 @@ export = class MyHandler extends Handler {
 
         const currKeyPrice = this.bot.pricelist.getKeyPrices();
 
-        if (currKeyPrice !== this.OldKeyPrices && !this.isUsingAutoPrice) {
+        if (currKeyPrice !== this.OldKeyPrices && this.isEnableScrapAdjustment) {
             // When scrap adjustment activated, if key rate changes, then it will force update key prices after a trade.
             this.autokeysStatus = {
                 isBuyingKeys: false,
@@ -1824,7 +1824,7 @@ export = class MyHandler extends Handler {
                 }`
         );
 
-        const isAlreadyRunningAutokeys = this.autokeysIsActive !== false;
+        const isAlreadyRunningAutokeys = this.autokeysIsActive;
         const isKeysAlreadyExist = this.bot.pricelist.searchByName('Mann Co. Supply Crate Key', false);
         const time = this.timeWithEmoji();
 
@@ -1833,7 +1833,7 @@ export = class MyHandler extends Handler {
             if (
                 isBankingKeys &&
                 isEnableKeyBanking &&
-                (isAlreadyUpdatedToBank !== true ||
+                (!isAlreadyUpdatedToBank ||
                     roundedAmountKeysCanBankMin !== this.oldAmount.keysCanBankMin ||
                     roundedAmountKeysCanBankMax !== this.oldAmount.keysCanBankMax ||
                     currKeys !== this.oldAmount.ofKeys)
@@ -1859,7 +1859,7 @@ export = class MyHandler extends Handler {
             } else if (
                 isBankingBuyKeysWithEnoughRefs &&
                 isEnableKeyBanking &&
-                (isAlreadyUpdatedToBuy !== true ||
+                (!isAlreadyUpdatedToBuy ||
                     roundedAmountKeysCanBuy !== this.oldAmount.keysCanBuy ||
                     currKeys !== this.oldAmount.ofKeys)
             ) {
@@ -1882,9 +1882,9 @@ export = class MyHandler extends Handler {
                 this.autokeysIsActive = true;
                 this.updateAutokeysBuy(setMinKeys, setMaxKeys);
             } else if (
-                !isEnableKeyBanking &&
                 isBuyingKeys &&
-                (isAlreadyUpdatedToBuy !== true ||
+                !isEnableKeyBanking &&
+                (!isAlreadyUpdatedToBuy ||
                     roundedAmountKeysCanBuy !== this.oldAmount.keysCanBuy ||
                     currKeys !== this.oldAmount.ofKeys)
             ) {
@@ -1908,7 +1908,7 @@ export = class MyHandler extends Handler {
                 this.updateAutokeysBuy(setMinKeys, setMaxKeys);
             } else if (
                 isSellingKeys &&
-                (isAlreadyUpdatedToSell !== true ||
+                (!isAlreadyUpdatedToSell ||
                     roundedAmountKeysCanSell !== this.oldAmount.keysCanSell ||
                     currKeys !== this.oldAmount.ofKeys)
             ) {
@@ -1954,7 +1954,7 @@ export = class MyHandler extends Handler {
                 };
                 this.autokeysIsActive = false;
                 this.updateToDisableAutokeys();
-            } else if (isAlertAdmins && isAlreadyAlert !== true) {
+            } else if (isAlertAdmins && !isAlreadyAlert) {
                 // alert admins when low pure
                 this.autokeysStatus = {
                     isBuyingKeys: false,
@@ -2057,7 +2057,7 @@ export = class MyHandler extends Handler {
                     };
                     this.autokeysIsActive = true;
                     this.createAutokeysSell(setMinKeys, setMaxKeys);
-                } else if (isAlertAdmins && isAlreadyAlert !== true) {
+                } else if (isAlertAdmins && !isAlreadyAlert) {
                     // alert admins when low pure
                     this.autokeysStatus = {
                         isBuyingKeys: false,
@@ -2085,7 +2085,7 @@ export = class MyHandler extends Handler {
                 if (
                     isBankingKeys &&
                     isEnableKeyBanking &&
-                    (isAlreadyUpdatedToBank !== true ||
+                    (!isAlreadyUpdatedToBank ||
                         roundedAmountKeysCanBankMin !== this.oldAmount.keysCanBankMin ||
                         roundedAmountKeysCanBankMax !== this.oldAmount.keysCanBankMax ||
                         currKeys !== this.oldAmount.ofKeys)
@@ -2111,7 +2111,7 @@ export = class MyHandler extends Handler {
                 } else if (
                     isBankingBuyKeysWithEnoughRefs &&
                     isEnableKeyBanking &&
-                    (isAlreadyUpdatedToBuy !== true ||
+                    (!isAlreadyUpdatedToBuy ||
                         roundedAmountKeysCanBuy !== this.oldAmount.keysCanBuy ||
                         currKeys !== this.oldAmount.ofKeys)
                 ) {
@@ -2136,7 +2136,7 @@ export = class MyHandler extends Handler {
                 } else if (
                     !isEnableKeyBanking &&
                     isBuyingKeys &&
-                    (isAlreadyUpdatedToBuy !== true ||
+                    (!isAlreadyUpdatedToBuy ||
                         roundedAmountKeysCanBuy !== this.oldAmount.keysCanBuy ||
                         currKeys !== this.oldAmount.ofKeys)
                 ) {
@@ -2160,7 +2160,7 @@ export = class MyHandler extends Handler {
                     this.updateAutokeysBuy(setMinKeys, setMaxKeys);
                 } else if (
                     isSellingKeys &&
-                    (isAlreadyUpdatedToSell !== true ||
+                    (!isAlreadyUpdatedToSell ||
                         roundedAmountKeysCanSell !== this.oldAmount.keysCanSell ||
                         currKeys !== this.oldAmount.ofKeys)
                 ) {
@@ -2182,7 +2182,7 @@ export = class MyHandler extends Handler {
                     };
                     this.autokeysIsActive = true;
                     this.updateAutokeysSell(setMinKeys, setMaxKeys);
-                } else if (isAlertAdmins && isAlreadyAlert !== true) {
+                } else if (isAlertAdmins && !isAlreadyAlert) {
                     // alert admins when low pure
                     this.autokeysStatus = {
                         isBuyingKeys: false,
@@ -2213,7 +2213,7 @@ export = class MyHandler extends Handler {
     private createAutokeysSell(minKeys: number, maxKeys: number): void {
         const keyPrices = this.bot.pricelist.getKeyPrices();
         let entry;
-        if (this.isUsingAutoPrice) {
+        if (!this.isEnableScrapAdjustment) {
             entry = {
                 sku: '5021;6',
                 enabled: true,
@@ -2255,7 +2255,7 @@ export = class MyHandler extends Handler {
     private createAutokeysBuy(minKeys: number, maxKeys: number): void {
         const keyPrices = this.bot.pricelist.getKeyPrices();
         let entry;
-        if (this.isUsingAutoPrice) {
+        if (!this.isEnableScrapAdjustment) {
             entry = {
                 sku: '5021;6',
                 enabled: true,
@@ -2339,7 +2339,7 @@ export = class MyHandler extends Handler {
     private updateAutokeysSell(minKeys: number, maxKeys: number): void {
         const keyPrices = this.bot.pricelist.getKeyPrices();
         let entry;
-        if (this.isUsingAutoPrice) {
+        if (!this.isEnableScrapAdjustment) {
             entry = {
                 sku: '5021;6',
                 enabled: true,
@@ -2381,7 +2381,7 @@ export = class MyHandler extends Handler {
     private updateAutokeysBuy(minKeys: number, maxKeys: number): void {
         const keyPrices = this.bot.pricelist.getKeyPrices();
         let entry;
-        if (this.isUsingAutoPrice) {
+        if (!this.isEnableScrapAdjustment) {
             entry = {
                 sku: '5021;6',
                 enabled: true,

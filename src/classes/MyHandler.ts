@@ -2520,22 +2520,23 @@ export = class MyHandler extends Handler {
         }
     }
 
-    private craftDuplicateWeapons(): void {
+    private async craftDuplicateWeapons(): Promise<void> {
         if (process.env.DISABLE_CRAFTING_WEAPONS === 'true') {
             return;
         }
         const currencies = this.bot.inventoryManager.getInventory().getCurrencies();
 
-        this.craftweaponOnlyCraftable().forEach(sku => {
+        for (const sku of this.craftweaponOnlyCraftable()) {
+            await sleepasync().Promise.sleep(0.5 * 1000);
             const weapon = currencies[sku].length;
-            if (weapon >= 2 && this.bot.pricelist.getPrice(sku, true) !== null) {
+            if (weapon >= 2 && this.bot.pricelist.getPrice(sku, true) === null) {
                 // Only craft if duplicated and not exist in pricelist
                 const combineWeapon = Math.ceil(weapon / 2);
                 for (let i = 0; i < combineWeapon; i++) {
                     this.bot.tf2gc.combineWeapon(sku);
                 }
             }
-        });
+        }
     }
 
     private sortInventory(): void {

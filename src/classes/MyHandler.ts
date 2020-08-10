@@ -1477,7 +1477,6 @@ export = class MyHandler extends Handler {
                 this.discord.sendOfferReview(
                     offer,
                     reasons.join(', '),
-                    pureStock,
                     timeWithEmojis.time,
                     offer.summarizeWithLink(this.bot.schema),
                     offer.message,

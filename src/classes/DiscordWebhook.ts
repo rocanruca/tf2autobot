@@ -159,7 +159,6 @@ export = class DiscordWebhook {
     sendOfferReview(
         offer: TradeOffer,
         reasons: string,
-        pureStock: string[],
         time: string,
         tradeSummary: string,
         offerMessage: string,
@@ -191,6 +190,7 @@ export = class DiscordWebhook {
                 noMentionOnInvalidValue = false;
             }
         }
+        const pureStock = (this.bot.handler as MyHandler).pureStock();
         const mentionOwner = noMentionOnInvalidValue ? `${offer.id}` : `<@!${this.ownerID}>, check this! - ${offer.id}`;
         const botName = this.botName;
         const botAvatarURL = this.botAvatarURL;
@@ -204,7 +204,7 @@ export = class DiscordWebhook {
             .replace(/\|/g, '💫')
             .replace(/\\/g, '💫')
             .replace(/\(/g, '💫')
-            .replace(/\(/g, '💫')
+            .replace(/\)/g, '💫')
             .replace(/\[/g, '💫')
             .replace(/\]/g, '💫');
 
@@ -232,7 +232,7 @@ export = class DiscordWebhook {
                 .replace(/\|/g, '💫')
                 .replace(/\\/g, '💫')
                 .replace(/\(/g, '💫')
-                .replace(/\(/g, '💫')
+                .replace(/\)/g, '💫')
                 .replace(/\[/g, '💫')
                 .replace(/\]/g, '💫');
 
@@ -276,39 +276,49 @@ export = class DiscordWebhook {
                                   (value.diffRef >= keyPrice.sell.metal ? ` (${value.diffKey})` : '')
                                 : '') +
                             (offerMessage.length !== 0 ? `\n\n💬 Offer message: _${message}_` : '') +
-                            `${
-                                invalidItemsCombine.length !== 0
-                                    ? `\n\n🟨INVALID_ITEMS - ${invalidItemsCombine.join(',\n ')}`
-                                    : ''
-                            }${
-                                invalidItemsCombine.length !== 0 && overstockedItemsName.length !== 0
-                                    ? `\n🟦OVERSTOCKED - ${overstockedItemsName.join(', ')}`
-                                    : overstockedItemsName.length !== 0
-                                    ? `\n\n🟦OVERSTOCKED - ${overstockedItemsName.join(', ')}`
-                                    : ''
-                            }${
-                                (invalidItemsCombine.length !== 0 || overstockedItemsName.length !== 0) &&
-                                dupedItemsName.length !== 0
-                                    ? `\n🟫DUPED_ITEMS - ${dupedItemsName.join(', ')}`
-                                    : dupedItemsName.length !== 0
-                                    ? `\n\n🟫DUPED_ITEMS - ${dupedItemsName.join(', ')}`
-                                    : ''
-                            }${
-                                (invalidItemsCombine.length !== 0 ||
-                                    overstockedItemsName.length !== 0 ||
-                                    dupedItemsName.length !== 0) &&
-                                dupedFailedItemsName.length !== 0
-                                    ? `\n🟪DUPE_CHECK_FAILED - ${dupedFailedItemsName.join(', ')}`
-                                    : dupedFailedItemsName.length !== 0
-                                    ? `\n\n🟪DUPE_CHECK_FAILED - ${dupedFailedItemsName.join(', ')}`
-                                    : ''
-                            }` +
                             (isShowQuickLinks
                                 ? `\n\n🔍 ${partnerNameNoFormat}'s info:\n[Steam Profile](${links.steamProfile}) | [backpack.tf](${links.backpackTF}) | [steamREP](${links.steamREP})\n`
                                 : '\n'),
                         fields: [
                             {
-                                name: '**Status**',
+                                name: '__**Item list**__',
+                                value: `${
+                                    invalidItemsCombine.length !== 0
+                                        ? `🟨INVALID_ITEMS - ${invalidItemsCombine.join(',\n ')}`
+                                        : ''
+                                }${
+                                    invalidItemsCombine.length !== 0 && overstockedItemsName.length !== 0
+                                        ? `\n🟦OVERSTOCKED - ${overstockedItemsName.join(', ')}`
+                                        : overstockedItemsName.length !== 0
+                                        ? `🟦OVERSTOCKED - ${overstockedItemsName.join(', ')}`
+                                        : ''
+                                }${
+                                    (invalidItemsCombine.length !== 0 || overstockedItemsName.length !== 0) &&
+                                    dupedItemsName.length !== 0
+                                        ? `\n🟫DUPED_ITEMS - ${dupedItemsName.join(', ')}`
+                                        : dupedItemsName.length !== 0
+                                        ? `🟫DUPED_ITEMS - ${dupedItemsName.join(', ')}`
+                                        : ''
+                                }${
+                                    (invalidItemsCombine.length !== 0 ||
+                                        overstockedItemsName.length !== 0 ||
+                                        dupedItemsName.length !== 0) &&
+                                    dupedFailedItemsName.length !== 0
+                                        ? `\n🟪DUPE_CHECK_FAILED - ${dupedFailedItemsName.join(', ')}`
+                                        : dupedFailedItemsName.length !== 0
+                                        ? `🟪DUPE_CHECK_FAILED - ${dupedFailedItemsName.join(', ')}`
+                                        : ''
+                                }${
+                                    invalidItemsCombine.length !== 0 ||
+                                    overstockedItemsName.length !== 0 ||
+                                    dupedItemsName.length !== 0 ||
+                                    dupedFailedItemsName.length !== 0
+                                        ? ''
+                                        : '-'
+                                }`
+                            },
+                            {
+                                name: '__**Status**__',
                                 value:
                                     (isShowKeyRate
                                         ? `\n🔑 Key rate: ${keyPrice.buy.metal.toString()}/${keyPrice.sell.metal.toString()} ref`
@@ -461,7 +471,7 @@ export = class DiscordWebhook {
                 .replace(/\|/g, '💫')
                 .replace(/\\/g, '💫')
                 .replace(/\(/g, '💫')
-                .replace(/\(/g, '💫')
+                .replace(/\)/g, '💫')
                 .replace(/\[/g, '💫')
                 .replace(/\]/g, '💫');
 

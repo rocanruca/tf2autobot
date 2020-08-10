@@ -16,7 +16,7 @@ import MyHandler from './MyHandler';
 import CartQueue from './CartQueue';
 import DiscordWebhook from './DiscordWebhook';
 import sleepasync from 'sleep-async';
-import { Autokeys } from './Autokeys';
+import Autokeys from './Autokeys';
 
 import { Item, Currency } from '../types/TeamFortress2';
 import { UnknownDictionaryKnownValues, UnknownDictionary } from '../types/common';
@@ -1833,7 +1833,7 @@ export = class Commands {
             return;
         }
 
-        autokeys.refreshAutokeys();
+        autokeys.refresh();
         this.bot.sendMessage(steamID, '✅ Successfully refreshed Autokeys.');
     }
 

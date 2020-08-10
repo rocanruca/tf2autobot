@@ -25,7 +25,7 @@ import paths from '../resources/paths';
 import { parseJSON, exponentialBackoff } from '../lib/helpers';
 import TF2Inventory from './TF2Inventory';
 import DiscordWebhook from './DiscordWebhook';
-import { Autokeys } from './Autokeys';
+import Autokeys from './Autokeys';
 
 export = class MyHandler extends Handler {
     private readonly commands: Commands;
@@ -267,7 +267,7 @@ export = class MyHandler extends Handler {
 
             if (process.env.ENABLE_AUTO_SELL_AND_BUY_KEYS === 'true' && this.autokeys.isActive === true) {
                 log.debug('Disabling autokeys and removing key from pricelist...');
-                this.autokeys.updateToDisableAutokeys();
+                this.autokeys.disable();
             }
 
             this.bot.listings.removeAll().asCallback(function(err) {

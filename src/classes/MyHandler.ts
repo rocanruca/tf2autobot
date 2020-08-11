@@ -1187,13 +1187,14 @@ export = class MyHandler extends Handler {
                 offer.log('trade', 'has been accepted.');
 
                 // Auto sell keys if ref < minimum
-                const autokeys = this.autokeys;
-                autokeys.check();
+                this.autokeys.check();
 
-                const isAutoKeysEnabled = autokeys.isEnabled;
-                const autoKeysStatus = autokeys.isActive;
-                const isBuyingKeys = autokeys.status.isBuyingKeys;
-                const isBankingKeys = autokeys.status.isBankingKeys;
+                const autokeys = {
+                    isEnabled: this.autokeys.isEnabled,
+                    isActive: this.autokeys.isActive,
+                    isBuying: this.autokeys.status.isBuyingKeys,
+                    isBanking: this.autokeys.status.isBankingKeys
+                };
 
                 const pureStock = this.pureStock();
                 const timeWithEmojis = this.timeWithEmoji();
@@ -1225,12 +1226,7 @@ export = class MyHandler extends Handler {
                 ) {
                     this.discord.sendTradeSummary(
                         offer,
-                        isAutoKeysEnabled,
-                        autoKeysStatus,
-                        isBuyingKeys,
-                        isBankingKeys,
-                        offer.summarizeWithLink(this.bot.schema),
-                        pureStock,
+                        autokeys,
                         currentItems,
                         this.backpackSlots,
                         invalidItemsCombine,
@@ -1243,25 +1239,22 @@ export = class MyHandler extends Handler {
                 } else {
                     this.bot.messageAdmins(
                         'trade',
-                        `/me Trade #${offer.id} with ${offer.partner.getSteamID64()} is accepted. ✅\n\nSummary:\n` +
-                            offer.summarize(this.bot.schema) +
-                            (value.diff > 0
-                                ? `\n\n📈 Profit from overpay: ${value.diffRef} ref` +
-                                  (value.diffRef >= keyPrice.sell.metal ? ` (${value.diffKey})` : '')
-                                : value.diff < 0
-                                ? `\n\n📉 Loss from underpay: ${value.diffRef} ref` +
-                                  (value.diffRef >= keyPrice.sell.metal ? ` (${value.diffKey})` : '')
-                                : '') +
+                        `/me Trade #${offer.id} with ${offer.partner.getSteamID64()} is accepted. ✅` +
+                            summarizeDiscordWebhook(offer.summarizeWithLink(this.bot.schema), value, keyPrice) +
                             (isAcceptedInvalidItemsOverpay
                                 ? '\n\n🟨INVALID_ITEMS:\n' + invalidItemsCombine.join(',\n')
                                 : '') +
                             `\n🔑 Key rate: ${keyPrice.buy.metal.toString()}/${keyPrice.sell.metal.toString()} ref` +
                             `${
-                                isAutoKeysEnabled
+                                autokeys.isEnabled
                                     ? ' | Autokeys: ' +
-                                      (autoKeysStatus
+                                      (autokeys.isActive
                                           ? '✅' +
-                                            (isBankingKeys ? ' (banking)' : isBuyingKeys ? ' (buying)' : ' (selling)')
+                                            (autokeys.isBanking
+                                                ? ' (banking)'
+                                                : autokeys.isBuying
+                                                ? ' (buying)'
+                                                : ' (selling)')
                                           : '🛑')
                                     : ''
                             }` +
@@ -1478,8 +1471,6 @@ export = class MyHandler extends Handler {
                     offer,
                     reasons.join(', '),
                     timeWithEmojis.time,
-                    offer.summarizeWithLink(this.bot.schema),
-                    offer.message,
                     keyPrice,
                     value,
                     links,
@@ -1491,48 +1482,16 @@ export = class MyHandler extends Handler {
             } else {
                 const offerMessage = offer.message;
                 this.bot.messageAdmins(
-                    `/pre ⚠️ Offer #${offer.id} from ${offer.partner} is waiting for review.` +
+                    `⚠️ Offer #${offer.id} from ${offer.partner} is waiting for review.` +
                         `\nReason: ${meta.uniqueReasons.join(', ')}` +
                         (reasons.includes('⬜BACKPACKTF_DOWN')
-                            ? '\n\nBackpack.tf down, please manually check if this person is banned before accepting the offer.'
+                            ? '\nBackpack.tf down, please manually check if this person is banned before accepting the offer.'
                             : reasons.includes('⬜STEAM_DOWN')
-                            ? '\n\nSteam down, please manually check if this person have escrow.'
+                            ? '\nSteam down, please manually check if this person have escrow.'
                             : '') +
-                        `\n\nOffer Summary: ${offer.summarize(this.bot.schema)}${
-                            value.diff > 0
-                                ? `\n📈 Profit from overpay: ${value.diffRef} ref` +
-                                  (value.diffRef >= keyPrice.sell.metal ? ` (${value.diffKey})` : '')
-                                : value.diff < 0
-                                ? `\n📉 Loss from underpay: ${value.diffRef} ref` +
-                                  (value.diffRef >= keyPrice.sell.metal ? ` (${value.diffKey})` : '')
-                                : ''
-                        }${offerMessage.length !== 0 ? `\n\n💬 Offer message: "${offerMessage}"` : ''}${
-                            invalidItemsName.length !== 0
-                                ? `\n\n🟨INVALID_ITEMS - ${invalidItemsCombine.join(',\n')}`
-                                : ''
-                        }${
-                            invalidItemsName.length !== 0 && overstockedItemsName.length !== 0
-                                ? `\n🟦OVERSTOCKED - ${overstockedItemsName.join(', ')}`
-                                : overstockedItemsName.length !== 0
-                                ? `\n\n🟦OVERSTOCKED - ${overstockedItemsName.join(', ')}`
-                                : ''
-                        }${
-                            (invalidItemsName.length !== 0 || overstockedItemsName.length !== 0) &&
-                            dupedItemsName.length !== 0
-                                ? `\n🟫DUPED_ITEMS - ${dupedItemsName.join(', ')}`
-                                : dupedItemsName.length !== 0
-                                ? `\n\n🟫DUPED_ITEMS - ${dupedItemsName.join(', ')}`
-                                : ''
-                        }${
-                            (invalidItemsName.length !== 0 ||
-                                overstockedItemsName.length !== 0 ||
-                                dupedItemsName.length !== 0) &&
-                            dupedFailedItemsName.length !== 0
-                                ? `\n🟪DUPE_CHECK_FAILED - ${dupedFailedItemsName.join(', ')}`
-                                : dupedFailedItemsName.length !== 0
-                                ? `\n\n🟪DUPE_CHECK_FAILED - ${dupedFailedItemsName.join(', ')}`
-                                : ''
-                        }` +
+                        summarizeSteamChat(offer.summarize(this.bot.schema), value, keyPrice) +
+                        `${offerMessage.length !== 0 ? `\n\n💬 Offer message: "${offerMessage}"` : ''}` +
+                        `${listItems(invalidItemsName, overstockedItemsName, dupedItemsName, dupedFailedItemsName)}` +
                         `\n\nSteam: ${links.steamProfile}\nBackpack.tf: ${links.backpackTF}\nSteamREP: ${links.steamREP}` +
                         `\n\n🔑 Key rate: ${keyPrice.buy.metal.toString()}/${keyPrice.sell.metal.toString()} ref` +
                         `\n💰 Pure stock: ${pureStock.join(', ').toString()}`,
@@ -2761,3 +2720,63 @@ export = class MyHandler extends Handler {
         this.bot.client.gamesPlayed([this.customGameName, 440]);
     }
 };
+
+function summarizeSteamChat(
+    trade: string,
+    value: { diff: number; diffRef: number; diffKey: string },
+    keyPrice: { buy: Currencies; sell: Currencies }
+): string {
+    const summary =
+        `\n\nSummary\n` +
+        trade +
+        (value.diff > 0
+            ? `\n📈 Profit from overpay: ${value.diffRef} ref` +
+              (value.diffRef >= keyPrice.sell.metal ? ` (${value.diffKey})` : '')
+            : value.diff < 0
+            ? `\n📉 Loss from underpay: ${value.diffRef} ref` +
+              (value.diffRef >= keyPrice.sell.metal ? ` (${value.diffKey})` : '')
+            : '');
+    return summary;
+}
+
+function summarizeDiscordWebhook(
+    trade: string,
+    value: { diff: number; diffRef: number; diffKey: string },
+    keyPrice: { buy: Currencies; sell: Currencies }
+): string {
+    const summary =
+        `\n\n__**Summary**__\n` +
+        trade.replace('Asked:', '**Asked:**').replace('Offered:', '**Offered:**') +
+        (value.diff > 0
+            ? `\n📈 ***Profit from overpay:*** ${value.diffRef} ref` +
+              (value.diffRef >= keyPrice.sell.metal ? ` (${value.diffKey})` : '')
+            : value.diff < 0
+            ? `\n📉 ***Loss from underpay:*** ${value.diffRef} ref` +
+              (value.diffRef >= keyPrice.sell.metal ? ` (${value.diffKey})` : '')
+            : '');
+    return summary;
+}
+
+function listItems(invalid: string[], overstock: string[], duped: string[], dupedFailed: string[]): string {
+    let list: string;
+    list += invalid.length !== 0 ? '🟨INVALID_ITEMS:\n- ' + invalid.join(',\n- ') : '';
+    list +=
+        overstock.length !== 0
+            ? (invalid.length !== 0 ? '\n' : '') + '🟦OVERSTOCKED:\n- ' + overstock.join(',\n- ')
+            : '';
+    list +=
+        duped.length !== 0
+            ? (invalid.length || overstock.length !== 0 ? '\n' : '') + '🟫DUPED_ITEMS:\n- ' + duped.join(',\n- ')
+            : '';
+    list +=
+        dupedFailed.length !== 0
+            ? (invalid.length || overstock.length !== 0 || duped.length !== 0 ? '\n' : '') +
+              '🟪DUPE_CHECK_FAILED:\n- ' +
+              dupedFailed.join(',\n- ')
+            : '';
+
+    if (list.length === 0) {
+        list = '-';
+    }
+    return list;
+}

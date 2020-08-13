@@ -1676,7 +1676,9 @@ class UserCart extends Cart {
         const summary = super.summarizeOurWithWeapons();
 
         const { isBuyer } = this.getCurrenciesWithWeapons();
-        const craftweapons = (this.bot.handler as MyHandler).craftweapon();
+        const weapons = (this.bot.handler as MyHandler).weapon();
+        const craft = weapons.craft;
+        const uncraft = weapons.uncraft;
 
         let addWeapons = 0;
 
@@ -1684,7 +1686,10 @@ class UserCart extends Cart {
         const scrap = ourDict['5000;6'] || 0;
         const reclaimed = ourDict['5001;6'] || 0;
         const refined = ourDict['5002;6'] || 0;
-        craftweapons.forEach(sku => {
+        craft.forEach(sku => {
+            addWeapons += ourDict[sku] || 0;
+        });
+        uncraft.forEach(sku => {
             addWeapons += ourDict[sku] || 0;
         });
 
@@ -1713,7 +1718,9 @@ class UserCart extends Cart {
         const summary = super.summarizeTheirWithWeapons();
 
         const { isBuyer } = this.getCurrenciesWithWeapons();
-        const craftweapons = (this.bot.handler as MyHandler).craftweapon();
+        const weapons = (this.bot.handler as MyHandler).weapon();
+        const craft = weapons.craft;
+        const uncraft = weapons.uncraft;
 
         let addWeapons = 0;
 
@@ -1721,7 +1728,10 @@ class UserCart extends Cart {
         const scrap = theirDict['5000;6'] || 0;
         const reclaimed = theirDict['5001;6'] || 0;
         const refined = theirDict['5002;6'] || 0;
-        craftweapons.forEach(sku => {
+        craft.forEach(sku => {
+            addWeapons += theirDict[sku] || 0;
+        });
+        uncraft.forEach(sku => {
             addWeapons += theirDict[sku] || 0;
         });
 
@@ -2240,10 +2250,15 @@ class UserCart extends Cart {
         };
 
         const required = this.getRequiredWithWeapons(buyerCurrenciesCount, currencies, this.canUseKeysWithWeapons());
-        const weapons = (this.bot.handler as MyHandler).craftweapon();
+        const weapons = (this.bot.handler as MyHandler).weapon();
+        const craft = weapons.craft;
+        const uncraft = weapons.uncraft;
 
         let addWeapons = 0;
-        weapons.forEach(sku => {
+        craft.forEach(sku => {
+            addWeapons += required.currencies[sku] * 0.5;
+        });
+        uncraft.forEach(sku => {
             addWeapons += required.currencies[sku] * 0.5;
         });
 
@@ -2351,7 +2366,9 @@ class UserCart extends Cart {
             exchange[isBuyer ? 'their' : 'our'].scrap += change;
 
             const currencies = sellerInventory.getCurrencies();
-            const weapons = (this.bot.handler as MyHandler).craftweapon();
+            const weapons = (this.bot.handler as MyHandler).weapon();
+            const craft = weapons.craft;
+            const uncraft = weapons.uncraft;
             // We won't use keys when giving change
             delete currencies['5021;6'];
 
@@ -2368,7 +2385,10 @@ class UserCart extends Cart {
                     value = 3;
                 } else if (sku === '5000;6') {
                     value = 1;
-                } else if (weapons.includes(sku) && this.bot.pricelist.getPrice(sku, true) === null) {
+                } else if (
+                    (craft.includes(sku) || uncraft.includes(sku)) &&
+                    this.bot.pricelist.getPrice(sku, true) === null
+                ) {
                     value = 0.5;
                 }
 

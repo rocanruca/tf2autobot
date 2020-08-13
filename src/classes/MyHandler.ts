@@ -1224,7 +1224,7 @@ export = class MyHandler extends Handler {
 
                 if (
                     process.env.DISABLE_DISCORD_WEBHOOK_TRADE_SUMMARY === 'false' &&
-                    process.env.DISCORD_WEBHOOK_TRADE_SUMMARY_URL
+                    this.discord.tradeSummaryLinks.length !== 0
                 ) {
                     this.discord.sendTradeSummary(
                         offer,

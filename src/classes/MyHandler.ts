@@ -1776,6 +1776,7 @@ export = class MyHandler extends Handler {
                     if (err) {
                         // if failed, retry after 10 minutes.
                         log.warn('Failed to obtain backpack slots, retry in 10 minutes: ', err);
+                        clearTimeout(this.retryRequest);
                         this.retryRequest = setTimeout(() => {
                             this.requestBackpackSlots();
                         }, 10 * 60 * 1000);
@@ -1787,6 +1788,7 @@ export = class MyHandler extends Handler {
                         err.status = body.result.status;
                         log.warn('Failed to obtain backpack slots, retry in 10 minutes: ', err);
                         // if failed, retry after 10 minutes.
+                        clearTimeout(this.retryRequest);
                         this.retryRequest = setTimeout(() => {
                             this.requestBackpackSlots();
                         }, 10 * 60 * 1000);

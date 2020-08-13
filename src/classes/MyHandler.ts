@@ -80,6 +80,8 @@ export = class MyHandler extends Handler {
 
     private backpackSlots = 0;
 
+    private retryRequest;
+
     private isAcceptedWithInvalidItemsOrOverstocked = false;
 
     recentlySentMessage: UnknownDictionary<number> = {};
@@ -116,11 +118,11 @@ export = class MyHandler extends Handler {
         const exceptionRefFromEnv = exceptionRef === 0 || isNaN(exceptionRef) ? 0 : exceptionRef;
         this.invalidValueException = Currencies.toScrap(exceptionRefFromEnv);
 
-        if (process.env.CUSTOM_GAME_NAME === 'tf2-automatic') {
-            this.customGameName = process.env.CUSTOM_GAME_NAME;
+        if (process.env.CUSTOM_PLAYING_GAME_NAME === 'tf2-automatic') {
+            this.customGameName = process.env.CUSTOM_PLAYING_GAME_NAME;
         } else {
-            if (process.env.CUSTOM_GAME_NAME.length <= 45) {
-                this.customGameName = process.env.CUSTOM_GAME_NAME + ' - tf2-automatic';
+            if (process.env.CUSTOM_PLAYING_GAME_NAME.length <= 45) {
+                this.customGameName = process.env.CUSTOM_PLAYING_GAME_NAME + ' - tf2-automatic';
             } else {
                 log.warn(
                     'Your custom game playing name is more than 45 characters, resetting to only "tf2-automatic"...'
@@ -236,11 +238,11 @@ export = class MyHandler extends Handler {
         // GetBackpackSlots
         this.requestBackpackSlots();
 
-        // Smelt / combine metal if needed
-        this.keepMetalSupply();
-
         // Craft duplicated weapons
         this.craftDuplicateWeapons();
+
+        // Smelt / combine metal if needed
+        this.keepMetalSupply();
 
         // Auto sell and buy keys if ref < minimum
         this.autokeys.check();
@@ -1269,11 +1271,11 @@ export = class MyHandler extends Handler {
         if (offer.state === TradeOfferManager.ETradeOfferState.Accepted) {
             // Offer is accepted
 
-            // Smelt / combine metal
-            this.keepMetalSupply();
-
             // Craft duplicate weapons
             this.craftDuplicateWeapons();
+
+            // Smelt / combine metal
+            this.keepMetalSupply();
 
             // Sort inventory
             this.sortInventory();
@@ -1508,7 +1510,7 @@ export = class MyHandler extends Handler {
     }
 
     private keepMetalSupply(): void {
-        if (process.env.DISABLE_CRAFTING === 'true') {
+        if (process.env.DISABLE_CRAFTING_METAL === 'true') {
             return;
         }
         const pure = this.currPure();
@@ -1572,16 +1574,18 @@ export = class MyHandler extends Handler {
         }
         const currencies = this.bot.inventoryManager.getInventory().getCurrencies();
 
-        this.craftweaponOnlyCraftable().forEach(sku => {
+        for (const sku of this.craftweaponOnlyCraftable()) {
             const weapon = currencies[sku].length;
+
             if (weapon >= 2 && this.bot.pricelist.getPrice(sku, true) === null) {
                 // Only craft if duplicated and not exist in pricelist
-                const combineWeapon = Math.ceil(weapon / 2);
+                const combineWeapon = Math.trunc(weapon / 2);
+
                 for (let i = 0; i < combineWeapon; i++) {
                     this.bot.tf2gc.combineWeapon(sku);
                 }
             }
-        });
+        }
     }
 
     private sortInventory(): void {
@@ -1770,15 +1774,26 @@ export = class MyHandler extends Handler {
                 },
                 (err, response, body) => {
                     if (err) {
-                        return reject(err);
+                        // if failed, retry after 10 minutes.
+                        log.warn('Failed to obtain backpack slots, retry in 10 minutes: ', err);
+                        this.retryRequest = setTimeout(() => {
+                            this.requestBackpackSlots();
+                        }, 10 * 60 * 1000);
+                        return reject();
                     }
 
                     if (body.result.status != 1) {
                         err = new Error(body.result.statusDetail);
                         err.status = body.result.status;
-                        return reject(err);
+                        log.warn('Failed to obtain backpack slots, retry in 10 minutes: ', err);
+                        // if failed, retry after 10 minutes.
+                        this.retryRequest = setTimeout(() => {
+                            this.requestBackpackSlots();
+                        }, 10 * 60 * 1000);
+                        return reject();
                     }
 
+                    clearTimeout(this.retryRequest);
                     this.backpackSlots = body.result.num_backpack_slots;
 
                     return resolve();

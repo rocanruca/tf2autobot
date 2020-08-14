@@ -60,8 +60,7 @@
         "url": "^0.11.0",
         "valid-url": "^1.0.9",
         "winston": "^3.3.3",
-        "winston-daily-rotate-file": "^4.5.0",
-        "xmlhttprequest-ts": "^1.0.1"
+        "winston-daily-rotate-file": "^4.5.0"
     },
     "devDependencies": {
         "@types/async": "^3.2.3",

@@ -7,7 +7,7 @@ import Currencies from 'tf2-currencies';
 import SKU from 'tf2-sku';
 import SchemaManager from 'tf2-schema';
 
-import { XMLHttpRequest } from 'xmlhttprequest-ts';
+import DiscordWebhook, { Webhook } from 'discord-webhook-ts';
 
 import log from '../lib/logger';
 import { getPricelist, getPrice } from '../lib/ptf-api';
@@ -445,7 +445,7 @@ export default class Pricelist extends EventEmitter {
             match.sell = new Currencies(data.sell);
             match.time = data.time;
 
-            const name = this.schema.getName(SKU.fromString(match.sku), false);
+            const itemName = this.schema.getName(SKU.fromString(match.sku), false);
 
             this.priceChanged(match.sku, match);
 
@@ -453,7 +453,7 @@ export default class Pricelist extends EventEmitter {
                 process.env.DISABLE_DISCORD_WEBHOOK_PRICE_UPDATE === 'false' &&
                 process.env.DISCORD_WEBHOOK_PRICE_UPDATE_URL
             ) {
-                this.sendWebHookPriceUpdate(data.sku, name, match);
+                this.sendWebHookPriceUpdate(data.sku, itemName, match);
             }
         }
     }
@@ -464,9 +464,9 @@ export default class Pricelist extends EventEmitter {
     }
 
     private sendWebHookPriceUpdate(sku: string, itemName: string, newPrice: Entry): void {
-        const request = new XMLHttpRequest();
-        request.open('POST', process.env.DISCORD_WEBHOOK_PRICE_UPDATE_URL);
-        request.setRequestHeader('Content-type', 'application/json');
+        const time = moment()
+            .tz(process.env.TIMEZONE ? process.env.TIMEZONE : 'UTC') //timezone format: https://en.wikipedia.org/wiki/List_of_tz_database_time_zones
+            .format(process.env.CUSTOM_TIME_FORMAT ? process.env.CUSTOM_TIME_FORMAT : 'MMMM Do YYYY, HH:mm:ss ZZ'); // refer: https://www.tutorialspoint.com/momentjs/momentjs_format.htm
 
         const parts = sku.split(';');
         const newSku = parts[0] + ';6';
@@ -616,19 +616,19 @@ export default class Pricelist extends EventEmitter {
         const qualityColorPrint = qualityColor.color[qualityItem].toString();
 
         /*eslint-disable */
-        const priceUpdate = JSON.stringify({
+        const priceUpdate = {
             username: process.env.DISCORD_WEBHOOK_USERNAME,
             avatar_url: process.env.DISCORD_WEBHOOK_AVATAR_URL,
             embeds: [
                 {
                     author: {
                         name: itemName,
-                        url: 'https://www.prices.tf/items/' + sku,
+                        url: `https://www.prices.tf/items/${sku}`,
                         icon_url:
                             'https://steamcdn-a.akamaihd.net/steamcommunity/public/images/avatars/3d/3dba19679c4a689b9d24fa300856cbf3d948d631_full.jpg'
                     },
                     footer: {
-                        text: `Item's SKU: ${sku} • ${moment.utc().format()}`
+                        text: `Item's SKU: ${sku} • ${time}`
                     },
                     thumbnail: {
                         url: itemImageUrlPrint
@@ -638,17 +638,19 @@ export default class Pricelist extends EventEmitter {
                     },
                     title: '',
                     description:
-                        `**※Buying:** ${newPrice.buy.toString()}\n**※Selling:** ${newPrice.sell.toString()}\n` +
+                        `**※Buying for:** ${newPrice.buy.toString()}\n**※Selling for:** ${newPrice.sell.toString()}\n` +
                         (process.env.DISCORD_WEBHOOK_PRICE_UPDATE_ADDITIONAL_DESCRIPTION_NOTE
                             ? process.env.DISCORD_WEBHOOK_PRICE_UPDATE_ADDITIONAL_DESCRIPTION_NOTE
                             : ''),
                     color: qualityColorPrint
                 }
             ]
-        });
+        };
         /*eslint-enable */
 
-        request.send(priceUpdate);
+        const discordClient = new DiscordWebhook(process.env.DISCORD_WEBHOOK_PRICE_UPDATE_URL);
+        const requestBody: Webhook.input.POST = priceUpdate;
+        discordClient.execute(requestBody);
     }
 
     private getOld(): Entry[] {

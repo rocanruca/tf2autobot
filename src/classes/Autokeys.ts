@@ -9,7 +9,7 @@ import log from '../lib/logger';
 import DiscordWebhook from './DiscordWebhook';
 
 export = class Autokeys {
-    private readonly bot: Bot;
+    readonly bot: Bot;
 
     private readonly discord: DiscordWebhook;
 
@@ -643,6 +643,14 @@ export = class Autokeys {
             }
         }
         this.bot.listings.checkBySKU('5021;6');
+        log.debug(
+            'isActive: ' +
+                this.isActive.toString() +
+                ', isBuying: ' +
+                this.status.isBuyingKeys.toString() +
+                ', isBanking: ' +
+                this.status.isBankingKeys.toString()
+        );
     }
 
     private createToBuy(minKeys: number, maxKeys: number): void {

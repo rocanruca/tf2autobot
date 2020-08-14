@@ -1990,7 +1990,11 @@ export = class Commands {
             Currencies.toRefined(currRef)
         )}(${Currencies.toRefined(currRef)}) < ${Currencies.toRefined(userPure.maxRefs)}`;
 
-        let reply = `Your current AutoKeys settings:\n${summary}\n\nDiagram:\n${keysPosition}\n${keysLine}\n${refsPosition}\n${refsLine}\n${xAxisRef}\n`;
+        const isAdmin = this.bot.isAdmin(steamID);
+
+        let reply =
+            (isAdmin ? 'Your ' : 'My ') +
+            `current AutoKeys settings:\n${summary}\n\nDiagram:\n${keysPosition}\n${keysLine}\n${refsPosition}\n${refsLine}\n${xAxisRef}\n`;
         reply += `\n       Key price: ${keyPrices.buy.metal + '/' + keyPrices.sell}`;
         reply += `\nScrap Adjustment: ${autokeys.isEnableScrapAdjustment ? 'Enabled ✅' : 'Disabled ❌'}`;
         reply += `\n    Auto-banking: ${autokeys.isKeyBankingEnabled ? 'Enabled ✅' : 'Disabled ❌'}`;
@@ -1998,7 +2002,7 @@ export = class Commands {
             status
                 ? status.isBankingKeys
                     ? 'Banking' + (autokeys.isEnableScrapAdjustment ? ' (default price)' : '')
-                    : status.isBankingKeys
+                    : status.isBuyingKeys
                     ? 'Buying for ' +
                       Currencies.toRefined(
                           keyPrices.buy.toValue() +

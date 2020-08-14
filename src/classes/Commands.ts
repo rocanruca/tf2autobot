@@ -262,8 +262,8 @@ export = class Commands {
             steamID,
             process.env.CUSTOM_HOW2TRADE_MESSAGE
                 ? process.env.CUSTOM_HOW2TRADE_MESSAGE
-                : '/quote You can either send me an offer yourself, or use one of my commands to request a trade. Say you want to buy a Team Captain, just type "!buy Team Captain". Type "!help" for all the commands.' +
-                      '\nYou can also buy or sell multiple items by using "!buycart" or "!sellcart" commands.'
+                : '/quote You can either send me an offer yourself, or use one of my commands to request a trade. Say you want to buy a Team Captain, just type "!buy Team Captain", if want to buy more, just add the [amount] - "!buy 2 Team Captain". Type "!help" for all the commands.' +
+                      '\nYou can also buy or sell multiple items by using "!buycart [amount] <item name>" or "!sellcart [amount] <item name>" commands.'
         );
     }
 
@@ -1994,7 +1994,7 @@ export = class Commands {
 
         let reply =
             (isAdmin ? 'Your ' : 'My ') +
-            `current AutoKeys settings:\n${summary}\n\nDiagram:\n${keysPosition}\n${keysLine}\n${refsPosition}\n${refsLine}\n${xAxisRef}\n`;
+            `current Autokeys settings:\n${summary}\n\nDiagram:\n${keysPosition}\n${keysLine}\n${refsPosition}\n${refsLine}\n${xAxisRef}\n`;
         reply += `\n       Key price: ${keyPrices.buy.metal + '/' + keyPrices.sell}`;
         reply += `\nScrap Adjustment: ${autokeys.isEnableScrapAdjustment ? 'Enabled ✅' : 'Disabled ❌'}`;
         reply += `\n    Auto-banking: ${autokeys.isKeyBankingEnabled ? 'Enabled ✅' : 'Disabled ❌'}`;

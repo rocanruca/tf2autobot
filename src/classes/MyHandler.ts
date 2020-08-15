@@ -126,11 +126,13 @@ export = class MyHandler extends Handler {
         const exceptionRefFromEnv = exceptionRef === 0 || isNaN(exceptionRef) ? 0 : exceptionRef;
         this.invalidValueException = Currencies.toScrap(exceptionRefFromEnv);
 
-        if (process.env.CUSTOM_PLAYING_GAME_NAME === 'tf2-automatic') {
-            this.customGameName = process.env.CUSTOM_PLAYING_GAME_NAME;
+        const customGameName = process.env.CUSTOM_PLAYING_GAME_NAME;
+
+        if (!customGameName || customGameName === 'tf2-automatic') {
+            this.customGameName = customGameName;
         } else {
-            if (process.env.CUSTOM_PLAYING_GAME_NAME.length <= 45) {
-                this.customGameName = process.env.CUSTOM_PLAYING_GAME_NAME + ' - tf2-automatic';
+            if (customGameName.length <= 45) {
+                this.customGameName = customGameName + ' - tf2-automatic';
             } else {
                 log.warn(
                     'Your custom game playing name is more than 45 characters, resetting to only "tf2-automatic"...'
@@ -1030,13 +1032,14 @@ export = class MyHandler extends Handler {
         if (wrongAboutOffer.length !== 0) {
             const reasons = wrongAboutOffer.map(wrong => wrong.reason);
             const uniqueReasons = reasons.filter(reason => reasons.includes(reason));
-            const moreThanOnly =
-                (process.env.DISABLE_GIVE_PRICE_TO_INVALID_ITEMS === 'false' ||
-                    process.env.DISABLE_ACCEPT_OVERSTOCKED_OVERPAY === 'false') &&
-                exchange.our.value < exchange.their.value;
-            const moreThanOrEqualTo =
-                process.env.DISABLE_GIVE_PRICE_TO_INVALID_ITEMS === 'true' &&
-                exchange.our.value <= exchange.their.value;
+
+            const acceptingCondition =
+                process.env.DISABLE_GIVE_PRICE_TO_INVALID_ITEMS === 'false' ||
+                process.env.DISABLE_ACCEPT_OVERSTOCKED_OVERPAY === 'false'
+                    ? exchange.our.value < exchange.their.value
+                    : process.env.DISABLE_GIVE_PRICE_TO_INVALID_ITEMS === 'true'
+                    ? exchange.our.value <= exchange.their.value
+                    : false;
 
             if (
                 ((uniqueReasons.includes('🟨INVALID_ITEMS') &&
@@ -1048,7 +1051,7 @@ export = class MyHandler extends Handler {
                     uniqueReasons.includes('🟫DUPED_ITEMS') ||
                     uniqueReasons.includes('🟪DUPE_CHECK_FAILED')
                 ) &&
-                (moreThanOnly || moreThanOrEqualTo) &&
+                acceptingCondition &&
                 exchange.our.value !== 0
             ) {
                 this.isAcceptedWithInvalidItemsOrOverstocked = true;

@@ -1196,7 +1196,8 @@ export = class MyHandler extends Handler {
                     } else if (oldState === TradeOfferManager.ETradeOfferState.CreatedNeedsConfirmation) {
                         reason = 'Failed to accept mobile confirmation, you can try send the trade again';
                     } else {
-                        reason = 'The offer has been active for a while, you can try send the trade again';
+                        reason =
+                            "The offer has been active for a while. If the offer was just created, this is likely an issue on Steam's end. Please try again later";
                     }
 
                     this.bot.sendMessage(

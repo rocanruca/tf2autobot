@@ -33,7 +33,6 @@
         "callback-queue": "^3.0.0",
         "cheerio": "^1.0.0-rc.3",
         "death": "^1.1.0",
-        "discord-webhook-ts": "^3.0.3",
         "discord.js": "^12.2.0",
         "dot-prop": "^5.2.0",
         "dotenv": "^8.2.0",
@@ -60,7 +59,8 @@
         "url": "^0.11.0",
         "valid-url": "^1.0.9",
         "winston": "^3.3.3",
-        "winston-daily-rotate-file": "^4.5.0"
+        "winston-daily-rotate-file": "^4.5.0",
+        "xmlhttprequest-ts": "^1.0.1"
     },
     "devDependencies": {
         "@types/async": "^3.2.3",

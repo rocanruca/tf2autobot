@@ -656,7 +656,7 @@ export = class MyHandler extends Handler {
 
                     // TODO: Go through all assetids and check if the item is being sold for a specific price
 
-                    if (match !== null && (sku !== '5021;6' || !exchange.contains.items)) {
+                    if (match !== null && sku !== '5021;6') {
                         // If we found a matching price and the item is not a key, or the we are not trading items (meaning that we are trading keys) then add the price of the item
 
                         // Add value of items
@@ -1173,7 +1173,7 @@ export = class MyHandler extends Handler {
                             ' Please use Steam Guard Mobile Authenticator so you will no longer need to wait like this in the future.' +
                             '\nRead:\n' +
                             '• Steam Guard Mobile Authenticator - https://support.steampowered.com/kb_article.php?ref=8625-WRAH-9030' +
-                            '• Steam Guard: How to set up a Steam Guard Mobile Authenticator - https://support.steampowered.com/kb_article.php?ref=4440-RTUI-9218'
+                            '\n• Steam Guard: How to set up a Steam Guard Mobile Authenticator - https://support.steampowered.com/kb_article.php?ref=4440-RTUI-9218'
                     );
                 } else if (offer.state === TradeOfferManager.ETradeOfferState.Declined) {
                     const offerReason: { reason: string } = offer.data('action');
@@ -1202,7 +1202,7 @@ export = class MyHandler extends Handler {
                             'I do not accept trade hold (Escrow). Please use Steam Guard Mobile Authenticator so you will no longer need to wait like this in the future.' +
                             '\nRead:\n' +
                             '• Steam Guard Mobile Authenticator - https://support.steampowered.com/kb_article.php?ref=8625-WRAH-9030' +
-                            '• Steam Guard: How to set up a Steam Guard Mobile Authenticator - https://support.steampowered.com/kb_article.php?ref=4440-RTUI-9218';
+                            '\n• Steam Guard: How to set up a Steam Guard Mobile Authenticator - https://support.steampowered.com/kb_article.php?ref=4440-RTUI-9218';
                     } else if (offerReason.reason === 'ONLY_INVALID_VALUE') {
                         reasonForInvalidValue = true;
                         reason = "you've sent a trade with an invalid value (your side and my side did not matched).";

@@ -656,7 +656,7 @@ export = class MyHandler extends Handler {
 
                     // TODO: Go through all assetids and check if the item is being sold for a specific price
 
-                    if (match !== null && sku !== '5021;6') {
+                    if (match !== null && (sku !== '5021;6' || !exchange.contains.items)) {
                         // If we found a matching price and the item is not a key, or the we are not trading items (meaning that we are trading keys) then add the price of the item
 
                         // Add value of items
@@ -675,7 +675,7 @@ export = class MyHandler extends Handler {
                         const isBuying = diff > 0; // is buying if true.
                         const amountCanTrade = this.bot.inventoryManager.amountCanTrade(sku, isBuying); // return a number
 
-                        if (diff !== 0 && amountCanTrade < diff && notIncludeCraftweapon) {
+                        if (diff !== 0 && sku !== '5021;6' && amountCanTrade < diff && notIncludeCraftweapon) {
                             // User is offering too many
                             hasOverstock = true;
 
@@ -688,7 +688,13 @@ export = class MyHandler extends Handler {
                             });
                         }
 
-                        if (diff !== 0 && !isBuying && amountCanTrade < Math.abs(diff) && notIncludeCraftweapon) {
+                        if (
+                            diff !== 0 &&
+                            !isBuying &&
+                            sku !== '5021;6' &&
+                            amountCanTrade < Math.abs(diff) &&
+                            notIncludeCraftweapon
+                        ) {
                             // User is taking too many
                             hasUnderstock = true;
 
@@ -796,12 +802,12 @@ export = class MyHandler extends Handler {
                 // We are not selling keys
                 this.autoRelistNotSellingKeys++;
                 offer.log('info', 'we are not selling keys, declining...');
-                return { action: 'decline', reason: 'NOT_TRADING_KEYS' };
+                return { action: 'decline', reason: 'NOT_SELLING_KEYS' };
             } else if (exchange.their.contains.keys && priceEntry.intent !== 0 && priceEntry.intent !== 2) {
                 // We are not buying keys
                 this.autoRelistNotBuyingKeys++;
                 offer.log('info', 'we are not buying keys, declining...');
-                return { action: 'decline', reason: 'NOT_TRADING_KEYS' };
+                return { action: 'decline', reason: 'NOT_BUYING_KEYS' };
             } else {
                 // Check overstock / understock on keys
                 const diff = itemsDiff['5021;6'];
@@ -1194,6 +1200,12 @@ export = class MyHandler extends Handler {
                     } else if (offerReason.reason === 'NOT_TRADING_KEYS') {
                         reason =
                             'I am no longer trading keys. You can confirm it by adding me and send "!price Mann Co. Supply Crate Key" or "!autokeys".';
+                    } else if (offerReason.reason === 'NOT_SELLING_KEYS') {
+                        reason =
+                            'I am no longer selling keys. You can confirm it by adding me and send "!price Mann Co. Supply Crate Key" or "!autokeys".';
+                    } else if (offerReason.reason === 'NOT_BUYING_KEYS') {
+                        reason =
+                            'I am no longer buying keys. You can confirm it by adding me and send "!price Mann Co. Supply Crate Key" or "!autokeys".';
                     } else if (offerReason.reason === 'BANNED') {
                         reason =
                             "you're currently banned on backpack.tf or marked SCAMMER on steamrep.com or other community.";
@@ -1452,15 +1464,15 @@ export = class MyHandler extends Handler {
 
                 overstock.forEach(el => {
                     const name = this.bot.schema.getName(SKU.fromString(el.sku), false);
-                    overstocked.push(name);
+                    overstocked.push(el.amountCanTrade + ' - ' + name);
                 });
 
                 note = process.env.OVERSTOCKED_NOTE
                     ? `🟦_OVERSTOCKED - ${process.env.OVERSTOCKED_NOTE}`
                           .replace(/%name%/g, overstocked.join(', ')) // %name% here will include amountCanTrade value
                           .replace(/%isName%/, pluralize('is', overstocked.length))
-                    : `🟦_OVERSTOCKED - I can't buy any more ${overstocked.join(', ')} right now.`;
-                // Default note: I can't buy any more %name% right now.
+                    : `🟦_OVERSTOCKED - I can only buy ${overstocked.join(', ')} right now.`;
+                // Default note: I can only buy %amountCanTrade% - %name% right now.
 
                 reviewReasons.push(note);
             }

@@ -2988,7 +2988,10 @@ export = class MyHandler extends Handler {
     }
 
     onPriceChange(sku: string, entry: Entry): void {
-        this.bot.listings.checkBySKU(sku, entry);
+        setTimeout(() => {
+            // add 2 seconds delay before executing checkBySKU function
+            this.bot.listings.checkBySKU(sku, entry);
+        }, 2 * 1000);
     }
 
     onLoginThrottle(wait: number): void {
